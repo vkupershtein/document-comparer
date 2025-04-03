@@ -3,6 +3,7 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
+import re
 from typing import List, Tuple
 
 from rapidfuzz import fuzz
@@ -13,6 +14,7 @@ class TextMatcher:
     """
     Class to optimally match two lists of texts
     """
+    heading_pattern = re.compile(r"^(?:((?:[1-9]+\.)*[1-9]+\.*)\s*([A-Z0-9].+))")
 
     def __init__(self, texts_left: List[str], 
                  texts_right: List[str], 
@@ -111,7 +113,18 @@ class TextMatcher:
             limit_condition = current_position < limit_position if step < 0 else current_position > limit_position
             if limit_condition:
                 return -1
-        return match_positions.index(current_position)    
+        return match_positions.index(current_position)
+
+    @classmethod
+    def get_heading_info(cls, text: str) -> Tuple[str, str]:
+        """
+        Extract heading info from text
+        """
+        m = cls.heading_pattern.match(text)
+        if m:
+           head_number, head_text = m.groups()           
+           return head_number, head_text 
+        return "", ""
    
     @classmethod
     def split_combined_text(cls, text_left: str, text_right: str,
@@ -145,7 +158,7 @@ class TextMatcher:
         return segments_left, segments_right 
 
     @classmethod
-    def calculate_score_matrix(cls, texts_left, texts_right):
+    def calculate_score_matrix(cls, texts_left: List[str], texts_right: List[str]):
         """
         Calculate score matrix for two lists of texts
         """
@@ -158,7 +171,7 @@ class TextMatcher:
         return score_matrix
     
     @classmethod
-    def compute_optimal_matches(cls, texts_left, texts_right, ratio_threshold):
+    def compute_optimal_matches(cls, texts_left: List[str], texts_right: List[str], ratio_threshold) -> List[Tuple[int, str, int, str, float]]:
         """
         Compute optimal matches algorithm
         """
@@ -166,7 +179,7 @@ class TextMatcher:
         row_idx, col_idx = cls.find_optimal_matches(score_matrix)
         return [(i, texts_left[i], j, texts_right[j], score_matrix[i][j]) 
                                 for i, j in zip(row_idx, col_idx) 
-                                if score_matrix[i][j] > ratio_threshold]    
+                                if score_matrix[i][j] > ratio_threshold]     # type: ignore
                 
     def update_texts_combined(self):
         """
@@ -177,7 +190,7 @@ class TextMatcher:
                                                        self.texts_right, 
                                                        self.ratio_threshold)
         positions_left, matched_texts_left, positions_right, matched_texts_right, _ = zip(*optimal_matches)
-        match_tags = self.get_match_tags(matched_texts_left, matched_texts_right)
+        match_tags = self.get_match_tags(matched_texts_left, matched_texts_right) # type: ignore
 
         tags_length = len(match_tags)
 
@@ -219,6 +232,8 @@ class TextMatcher:
 
         for position_left, text_left, position_right, text_right, ratio in optimal_matches:
             item = {"ratio": round(ratio/100, 2), "type": "same" if ratio >= 96 else "changed"}
+            heading_number_left, heading_text_left = self.get_heading_info(text_left)
+            heading_number_right, heading_text_right = self.get_heading_info(text_right)           
             report_left, report_right = report_method(text_left, text_right)
             item = item | {
                 "text_left_report": report_left,
@@ -226,7 +241,11 @@ class TextMatcher:
                 "text_left": text_left,
                 "text_right": text_right,
                 "position": position_left,
-                "position_secondary": position_right
+                "position_secondary": position_right,
+                "heading_number_left": heading_number_left,
+                "heading_text_left": heading_text_left,
+                "heading_number_right": heading_number_right,
+                "heading_text_right": heading_text_right                
             }
 
             comparison_obj.append(item)
@@ -235,13 +254,16 @@ class TextMatcher:
         
         for idx_left in texts_left_indices:
             text_left = self.texts_left[idx_left]
+            heading_number_left, heading_text_left = self.get_heading_info(text_left)
             report_left, _ = report_method(text_left, "")
             item = {
                 "type": "removed",
                 "text_left_report": report_left,
                 "text_left": text_left,
                 "position": idx_left,
-                "position_secondary": 0               
+                "position_secondary": 0,
+                "heading_number_left": heading_number_left,
+                "heading_text_left": heading_text_left                               
             }
 
             comparison_obj.append(item)
@@ -250,15 +272,18 @@ class TextMatcher:
 
         for idx_right in texts_right_indices:
             text_right = self.texts_right[idx_right]
+            heading_number_right, heading_text_right = self.get_heading_info(text_right) 
             _, report_right = report_method("", text_right)
-            closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1)
+            closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1) # type: ignore
             closest_match = optimal_matches[closest_match_index]
             item = {
                 "type": "new",
                 "text_right_report": report_right,
-                "text_right": text_left,
+                "text_right": text_right,
                 "position": closest_match[0],
-                "position_secondary": closest_match[2]               
+                "position_secondary": closest_match[2],
+                "heading_number_right": heading_number_right,
+                "heading_text_right": heading_text_right                               
             }
 
             comparison_obj.append(item)        

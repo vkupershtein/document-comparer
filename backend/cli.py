@@ -52,7 +52,7 @@ def cli():
                              right_paragraphs, 
                              args.ratio_threshold, 
                              args.length_threshold).generate_comparison()
-
+    
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")
                           .sort_values(["position", "position_secondary"])
@@ -66,7 +66,7 @@ def cli():
         dict(selector="th,td", props=[("border", "1px solid #CCC"), ("padding", "8px")])
     ]
 
-    styled_df = comparison_html_df.style.set_table_styles(styles)
+    styled_df = comparison_html_df.style.set_table_styles(styles) # type: ignore
 
     os.makedirs(args.output_dir, exist_ok=True)    
     styled_df.to_html(os.path.join(args.output_dir, args.output_file))
