@@ -64,7 +64,8 @@ def cli():
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")
                           .sort_values(["position", "position_secondary"])
-                          .drop(columns=["text_left", "text_right", "position", "position_secondary"]))
+                          .drop(columns=["text_left", "text_right", "position", "position_secondary"])
+                          .astype(str))   
     
     styles = [
         dict(selector="tr:hover", props=[("background-color", "#F5F5F5")]),

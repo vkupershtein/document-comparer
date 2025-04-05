@@ -53,12 +53,15 @@ class TextMatcher:
         opcodes = cls.get_edit_operations(text_left, text_right, lambda x: x == " ")
         report_left = []
         report_right = []
+        changed = False
         for tag, i1, i2, j1, j2 in opcodes:
             subtext_left = text_left[i1:i2]
             subtext_right = text_right[j1:j2]
             if not (subtext_left.strip() or subtext_right.strip()):
                 continue
-            if tag == "delete":
+            if tag != "equal":
+                changed = True
+            if tag == "delete":                
                 subtext_left = f'<span style="color: #FF3131;text-decoration: line-through;">{subtext_left}</span>'
             elif tag == "replace":
                 subtext_left = f'<span style="color: #FFBF00;">{subtext_left}</span>'
@@ -67,7 +70,7 @@ class TextMatcher:
                 subtext_right = f'<span style="color: #50C878;">{subtext_right}</span>'
             report_left.append(subtext_left)
             report_right.append(subtext_right)
-        return "".join(report_left), "".join(report_right)
+        return "".join(report_left), "".join(report_right), changed
     
     @classmethod
     def get_match_json_report(cls, text_left: str, text_right: str):
@@ -77,14 +80,17 @@ class TextMatcher:
         opcodes = cls.get_edit_operations(text_left, text_right, lambda x: x == " ")
         report_left = []
         report_right = []
+        changed = False
         for tag, i1, i2, j1, j2 in opcodes:
             subtext_left = text_left[i1:i2]
             subtext_right = text_right[j1:j2]
             if not (subtext_left.strip() or subtext_right.strip()):
-                continue            
+                continue
+            if tag != "equal":
+                changed = True                        
             report_left.append({"tag": tag, "subtext": subtext_left})
             report_right.append({"tag": tag, "subtext": subtext_right})
-        return report_left, report_right  
+        return report_left, report_right, changed 
         
     
     @classmethod
@@ -221,11 +227,11 @@ class TextMatcher:
 
         report_method = self.get_match_html_report if mode == "html" else self.get_match_json_report
 
-        for position_left, text_left, position_right, text_right, ratio in optimal_matches:
-            item = {"ratio": round(ratio/100, 2), "type": "same" if ratio >= 96 else "changed"}
+        for position_left, text_left, position_right, text_right, ratio in optimal_matches:            
             heading_number_left, heading_text_left = get_heading_info(text_left)
             heading_number_right, heading_text_right = get_heading_info(text_right)           
-            report_left, report_right = report_method(text_left, text_right)
+            report_left, report_right, changed = report_method(text_left, text_right)
+            item = {"ratio": round(ratio/100, 4), "type": "changed" if changed else "same"}
             item = item | {
                 "text_left_report": report_left,
                 "text_right_report": report_right,
@@ -246,7 +252,7 @@ class TextMatcher:
         for idx_left in texts_left_indices:
             text_left = self.texts_left[idx_left]
             heading_number_left, heading_text_left = get_heading_info(text_left)
-            report_left, _ = report_method(text_left, "")
+            report_left, _, _ = report_method(text_left, "")
             item = {
                 "type": "removed",
                 "text_left_report": report_left,
@@ -264,7 +270,7 @@ class TextMatcher:
         for idx_right in texts_right_indices:
             text_right = self.texts_right[idx_right]
             heading_number_right, heading_text_right = get_heading_info(text_right) 
-            _, report_right = report_method("", text_right)
+            _, report_right, _ = report_method("", text_right)
             closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1) # type: ignore
             closest_match = optimal_matches[closest_match_index]
             item = {
