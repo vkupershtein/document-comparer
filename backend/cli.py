@@ -7,6 +7,8 @@ import os
 
 import pandas as pd
 
+from document_comparer.graph_builder import set_best_path
+from document_comparer import create_graph_builder
 from document_comparer import PDFProcessor
 from document_comparer import TextMatcher
 
@@ -26,12 +28,12 @@ def cli():
     parser.add_argument("--footer_left", type=int, default=0)
     parser.add_argument("--start_page_left", type=int, default=0)
     parser.add_argument("--start_header_left", type=int, default=0)
-    parser.add_argument("--size_weight_left", type=float, default=1.0)
+    parser.add_argument("--size_weight_left", type=float, default=0.8)
     parser.add_argument("--header_right", type=int, default=0)
     parser.add_argument("--footer_right", type=int, default=0)
     parser.add_argument("--start_page_right", type=int, default=0)
     parser.add_argument("--start_header_right", type=int, default=0)
-    parser.add_argument("--size_weight_right", type=float, default=1.0)
+    parser.add_argument("--size_weight_right", type=float, default=0.8)
     parser.add_argument("--ratio_threshold", type=float, default=0.5)
     parser.add_argument("--length_threshold", type=int, default=80)        
 
@@ -52,6 +54,12 @@ def cli():
                              right_paragraphs, 
                              args.ratio_threshold, 
                              args.length_threshold).generate_comparison()
+    
+    left_heading_sequence = create_graph_builder(comparison, "heading_number_left").find_best_path_in_sequence()
+    set_best_path(comparison, left_heading_sequence, "heading_number_left", "heading_text_left")
+
+    right_heading_sequence = create_graph_builder(comparison, "heading_number_right").find_best_path_in_sequence()
+    set_best_path(comparison, right_heading_sequence, "heading_number_right", "heading_text_right")    
     
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")

@@ -147,4 +147,28 @@ class GraphBuilder:
         for root_element in self.root_elements:
             candidate = self.find_best_path(self.find_paths(root_element))
             path_candidates.append(candidate)
-        return self.find_best_path(path_candidates)    
+        return self.find_best_path(path_candidates)
+
+def create_graph_builder(records: List[Dict[str, str|int]], value_key: str):
+    """
+    Create graph builder from arbitrary dataset
+    """
+    return GraphBuilder([(str(record[value_key]), {"record_position": i}) 
+                         for i, record in enumerate(records) 
+                         if value_key in record and record[value_key] != ""])
+
+def set_best_path(records: List[Dict[str, str|int]], path: List[Element], value_key: str, *support_keys):
+    """
+    Set best path to the dataset
+    """
+    for record in records:
+        record[value_key] = ""
+
+    for element in path:
+        records[element.metadata["record_position"]][value_key] = element.value
+
+    for record in records:
+        for support_key in support_keys:
+            if record[value_key] != "":
+                continue
+            record[support_key] = ""

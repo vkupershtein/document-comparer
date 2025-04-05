@@ -7,6 +7,8 @@ from typing import Union
 
 import pdfplumber as pdfp
 
+from .utils import get_heading_info
+
 class PDFProcessor:
     """
     Class processes PDF objects
@@ -30,14 +32,24 @@ class PDFProcessor:
                 page = page.crop((0, current_top, page.width, page.height-bottom))
                 page_words = page.extract_words(extra_attrs=["size"])
                 prev_bottom = 0
-                first_word = True
+                first_paragraph = True                
                 for word in page_words:
                     line_diff = word["top"] - prev_bottom
                     prev_bottom = word["bottom"]
-                    if line_diff > size_weight * word["size"] and len(paragraph_words) > 0 and not first_word:                        
-                        paragraphs.append(" ".join(paragraph_words))
+                    if line_diff > size_weight * word["size"] and len(paragraph_words) > 0:
+                        paragraph_text = " ".join(paragraph_words).strip()
+                        append_text = True
+                        if first_paragraph:
+                            heading_number, heading_text = get_heading_info(paragraph_text)
+                            if len(paragraphs) > 0 and not (heading_number and heading_text):
+                                append_text = False
+                        if append_text:
+                            paragraphs.append(paragraph_text)
+                        else:                                
+                            paragraphs[-1] = paragraphs[-1] + " " + paragraph_text                                
                         paragraph_words = []
+                        first_paragraph = False
                     paragraph_words.append(word["text"])
-                    first_word = False
-            paragraphs.append(" ".join(paragraph_words))
+                paragraphs.append(" ".join(paragraph_words).strip())
+                paragraph_words = []            
             return paragraphs

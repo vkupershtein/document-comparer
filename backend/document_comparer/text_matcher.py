@@ -3,18 +3,18 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
-import re
 from typing import List, Tuple
 
 from rapidfuzz import fuzz
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from .utils import get_heading_info
+
 class TextMatcher:
     """
     Class to optimally match two lists of texts
     """
-    heading_pattern = re.compile(r"^(?:((?:[1-9]+\.)*[1-9]+\.*)\s*([A-Z0-9].+))")
 
     def __init__(self, texts_left: List[str], 
                  texts_right: List[str], 
@@ -114,18 +114,7 @@ class TextMatcher:
             if limit_condition:
                 return -1
         return match_positions.index(current_position)
-
-    @classmethod
-    def get_heading_info(cls, text: str) -> Tuple[str, str]:
-        """
-        Extract heading info from text
-        """
-        m = cls.heading_pattern.match(text)
-        if m:
-           head_number, head_text = m.groups()           
-           return head_number, head_text 
-        return "", ""
-   
+  
     @classmethod
     def split_combined_text(cls, text_left: str, text_right: str,
                              positions: List[Tuple[str, int, int, int, int]], 
@@ -144,17 +133,17 @@ class TextMatcher:
             if ((tag == "delete" and left_end-left_start > length_threshold) 
                     or (tag == "insert" and right_end-right_start > length_threshold)):
                 if not first:
-                    segments_left.append(text_left[current_left_index:left_start])
-                    segments_right.append(text_right[current_right_index:right_start])
-                segments_left.append(text_left[left_start:left_end])
-                segments_right.append(text_right[right_start:right_end])                
+                    segments_left.append(text_left[current_left_index:left_start].strip())
+                    segments_right.append(text_right[current_right_index:right_start].strip())
+                segments_left.append(text_left[left_start:left_end].strip())
+                segments_right.append(text_right[right_start:right_end].strip())                
                 current_left_index = left_end            
                 current_right_index = right_end
             first = False
         if current_left_index < len(text_left):
-            segments_left.append(text_left[current_left_index:])
+            segments_left.append(text_left[current_left_index:].strip())
         if current_right_index < len(text_right):
-            segments_right.append(text_right[current_right_index:])                                
+            segments_right.append(text_right[current_right_index:].strip())                                
         return segments_left, segments_right 
 
     @classmethod
@@ -211,13 +200,15 @@ class TextMatcher:
 
             self.texts_right = (self.texts_right[:right_position] 
                                 + updated_texts_right 
-                                + self.texts_right[right_position+1:])            
+                                + self.texts_right[right_position+1:])
+
+        self.texts_left = [text for text in self.texts_left if len(text) > 0]
+        self.texts_right = [text for text in self.texts_right if len(text) > 0]             
 
     def generate_comparison(self, mode:str="html"):
         """
         Generate comparison object
         """
-        #self.update_texts()
         self.update_texts_combined()
         optimal_matches = self.compute_optimal_matches(self.texts_left, 
                                                        self.texts_right, 
@@ -232,8 +223,8 @@ class TextMatcher:
 
         for position_left, text_left, position_right, text_right, ratio in optimal_matches:
             item = {"ratio": round(ratio/100, 2), "type": "same" if ratio >= 96 else "changed"}
-            heading_number_left, heading_text_left = self.get_heading_info(text_left)
-            heading_number_right, heading_text_right = self.get_heading_info(text_right)           
+            heading_number_left, heading_text_left = get_heading_info(text_left)
+            heading_number_right, heading_text_right = get_heading_info(text_right)           
             report_left, report_right = report_method(text_left, text_right)
             item = item | {
                 "text_left_report": report_left,
@@ -254,7 +245,7 @@ class TextMatcher:
         
         for idx_left in texts_left_indices:
             text_left = self.texts_left[idx_left]
-            heading_number_left, heading_text_left = self.get_heading_info(text_left)
+            heading_number_left, heading_text_left = get_heading_info(text_left)
             report_left, _ = report_method(text_left, "")
             item = {
                 "type": "removed",
@@ -272,7 +263,7 @@ class TextMatcher:
 
         for idx_right in texts_right_indices:
             text_right = self.texts_right[idx_right]
-            heading_number_right, heading_text_right = self.get_heading_info(text_right) 
+            heading_number_right, heading_text_right = get_heading_info(text_right) 
             _, report_right = report_method("", text_right)
             closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1) # type: ignore
             closest_match = optimal_matches[closest_match_index]
