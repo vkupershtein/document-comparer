@@ -230,9 +230,10 @@ class TextMatcher:
         for position_left, text_left, position_right, text_right, ratio in optimal_matches:            
             heading_number_left, heading_text_left = get_heading_info(text_left)
             heading_number_right, heading_text_right = get_heading_info(text_right)           
-            report_left, report_right, changed = report_method(text_left, text_right)
-            item = {"ratio": float(round(ratio/100, 4)), "type": "changed" if changed else "same"}
-            item = item | {
+            report_left, report_right, changed = report_method(text_left, text_right)            
+            item = {
+                "ratio": float(round(ratio/100, 4)),
+                "type": "changed" if changed else "same",
                 "text_left_report": report_left,
                 "text_right_report": report_right,
                 "position": int(position_left),
@@ -252,12 +253,16 @@ class TextMatcher:
             heading_number_left, heading_text_left = get_heading_info(text_left)
             report_left, _, _ = report_method(text_left, "")
             item = {
+                "ratio": 0,
                 "type": "removed",
                 "text_left_report": report_left,
+                "text_right_report": "",
                 "position": int(idx_left),
                 "position_secondary": 0,
                 "heading_number_left": heading_number_left,
-                "heading_text_left": heading_text_left                               
+                "heading_text_left": heading_text_left,
+                "heading_number_right": "",
+                "heading_text_right": ""                                                
             }
 
             comparison_obj.append(item)
@@ -271,10 +276,14 @@ class TextMatcher:
             closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1) # type: ignore
             closest_match = optimal_matches[closest_match_index]
             item = {
+                "ratio": 0,
                 "type": "new",
+                "text_left_report": "",
                 "text_right_report": report_right,
                 "position": int(closest_match[0]),
                 "position_secondary": int(closest_match[2]),
+                "heading_number_left": "",
+                "heading_text_left": "",                 
                 "heading_number_right": heading_number_right,
                 "heading_text_right": heading_text_right                               
             }

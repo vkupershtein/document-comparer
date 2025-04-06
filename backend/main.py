@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from use_cases import compare_documents
-from schemas import CompareRequest
+from schemas import CompareRequest, CompareResponse
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +27,7 @@ async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                        footer_right: int = Form(40), size_weight_right: float = Form(0.8),
                        ratio_threshold: float = Form(0.5), length_threshold: int = Form(30), 
                        left_file: UploadFile = File(...), 
-                       right_file: UploadFile = File(...)):
+                       right_file: UploadFile = File(...)) -> CompareResponse:
     
     comparison = compare_documents(left_file.file, 
                                    right_file.file, 
@@ -40,7 +40,7 @@ async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                                                   ratio_threshold=ratio_threshold,
                                                   length_threshold=length_threshold), 
                                     "json")        
-    return {"comparison": comparison}
+    return CompareResponse(comparison = comparison)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
