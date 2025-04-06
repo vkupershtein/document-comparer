@@ -234,6 +234,8 @@ class TextMatcher:
             item = {
                 "ratio": float(round(ratio/100, 4)),
                 "type": "changed" if changed else "same",
+                "text_left": text_left,
+                "text_right": text_right,                 
                 "text_left_report": report_left,
                 "text_right_report": report_right,
                 "position": int(position_left),
@@ -255,6 +257,8 @@ class TextMatcher:
             item = {
                 "ratio": 0,
                 "type": "removed",
+                "text_left": text_left,
+                "text_right": "",                
                 "text_left_report": report_left,
                 "text_right_report": "",
                 "position": int(idx_left),
@@ -278,7 +282,9 @@ class TextMatcher:
             item = {
                 "ratio": 0,
                 "type": "new",
-                "text_left_report": "",
+                "text_left": "",
+                "text_right": text_right,
+                "text_left_report": "",                
                 "text_right_report": report_right,
                 "position": int(closest_match[0]),
                 "position_secondary": int(closest_match[2]),

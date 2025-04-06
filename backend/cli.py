@@ -57,7 +57,7 @@ def cli():
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")
                           .sort_values(["position", "position_secondary"])
-                          .drop(columns=["position", "position_secondary"])
+                          .drop(columns=["position", "position_secondary", "text_left", "text_right"])
                           .astype(str))   
     
     styles = [
