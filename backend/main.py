@@ -1,9 +1,10 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from typing import Annotated
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import pdfplumber
-import difflib
-from typing import List
+
+from use_cases import compare_documents
+from schemas import CompareRequest
 
 app = FastAPI()
 
@@ -15,26 +16,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def extract_text_from_pdf(pdf_file: UploadFile, start_page: int) -> List[str]:
-    try:
-        with pdfplumber.open(pdf_file.file) as pdf:
-            text = []
-            for page in pdf.pages[start_page:]:
-                text.extend(page.extract_text().split('\n'))
-            return text
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
-
 @app.post("/upload/")
-async def upload_files(
-    file1: UploadFile = File(...), start1: int = Form(...),
-    file2: UploadFile = File(...), start2: int = Form(...)):
+async def upload_files(header_left: int = Form(40), footer_left: int = Form(40), 
+                       size_weight_left: float = Form(0.8), header_right: int = Form(40),
+                       footer_right: int = Form(40), size_weight_right: float = Form(0.8),
+                       ratio_threshold: float = Form(0.5), length_threshold: int = Form(30), 
+                       left_file: UploadFile = File(...), 
+                       right_file: UploadFile = File(...)):
     
-    text1 = extract_text_from_pdf(file1, start1)
-    text2 = extract_text_from_pdf(file2, start2)
-    
-    diff = list(difflib.unified_diff(text1, text2, lineterm=""))
-    return {"differences": diff}
+    comparison = compare_documents(left_file.file, 
+                                   right_file.file, 
+                                   CompareRequest(header_left=header_left, 
+                                                  header_right=header_right,
+                                                  footer_left=footer_left,
+                                                  footer_right=footer_right,
+                                                  size_weight_left=size_weight_left,
+                                                  size_weight_right=size_weight_right,
+                                                  ratio_threshold=ratio_threshold,
+                                                  length_threshold=length_threshold), 
+                                    "json")        
+    return {"comparison": comparison}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

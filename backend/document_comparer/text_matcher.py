@@ -231,14 +231,12 @@ class TextMatcher:
             heading_number_left, heading_text_left = get_heading_info(text_left)
             heading_number_right, heading_text_right = get_heading_info(text_right)           
             report_left, report_right, changed = report_method(text_left, text_right)
-            item = {"ratio": round(ratio/100, 4), "type": "changed" if changed else "same"}
+            item = {"ratio": float(round(ratio/100, 4)), "type": "changed" if changed else "same"}
             item = item | {
                 "text_left_report": report_left,
                 "text_right_report": report_right,
-                "text_left": text_left,
-                "text_right": text_right,
-                "position": position_left,
-                "position_secondary": position_right,
+                "position": int(position_left),
+                "position_secondary": int(position_right),
                 "heading_number_left": heading_number_left,
                 "heading_text_left": heading_text_left,
                 "heading_number_right": heading_number_right,
@@ -256,8 +254,7 @@ class TextMatcher:
             item = {
                 "type": "removed",
                 "text_left_report": report_left,
-                "text_left": text_left,
-                "position": idx_left,
+                "position": int(idx_left),
                 "position_secondary": 0,
                 "heading_number_left": heading_number_left,
                 "heading_text_left": heading_text_left                               
@@ -276,9 +273,8 @@ class TextMatcher:
             item = {
                 "type": "new",
                 "text_right_report": report_right,
-                "text_right": text_right,
-                "position": closest_match[0],
-                "position_secondary": closest_match[2],
+                "position": int(closest_match[0]),
+                "position_secondary": int(closest_match[2]),
                 "heading_number_right": heading_number_right,
                 "heading_text_right": heading_text_right                               
             }

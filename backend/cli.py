@@ -7,10 +7,8 @@ import os
 
 import pandas as pd
 
-from document_comparer.graph_builder import set_best_path
-from document_comparer import create_graph_builder
-from document_comparer import PDFProcessor
-from document_comparer import TextMatcher
+from schemas import CompareRequest
+from use_cases import compare_documents
 
 def cli():
     """
@@ -26,45 +24,29 @@ def cli():
     parser.add_argument("--output_file", default="report.html")
     parser.add_argument("--header_left", type=int, default=0)
     parser.add_argument("--footer_left", type=int, default=0)
-    parser.add_argument("--start_page_left", type=int, default=0)
-    parser.add_argument("--start_header_left", type=int, default=0)
     parser.add_argument("--size_weight_left", type=float, default=0.8)
     parser.add_argument("--header_right", type=int, default=0)
     parser.add_argument("--footer_right", type=int, default=0)
-    parser.add_argument("--start_page_right", type=int, default=0)
-    parser.add_argument("--start_header_right", type=int, default=0)
     parser.add_argument("--size_weight_right", type=float, default=0.8)
     parser.add_argument("--ratio_threshold", type=float, default=0.5)
     parser.add_argument("--length_threshold", type=int, default=80)        
 
     args = parser.parse_args()
 
-    left_paragraphs = PDFProcessor(args.left_file).extract_paragraphs(page_start = args.start_page_left, 
-                                                                      top=args.header_left, 
-                                                                      bottom=args.footer_left,
-                                                                      top_start=args.start_header_left,
-                                                                      size_weight=args.size_weight_left)
-    right_paragraphs = PDFProcessor(args.right_file).extract_paragraphs(page_start = args.start_page_right, 
-                                                                      top=args.header_right, 
-                                                                      bottom=args.footer_right,
-                                                                      top_start=args.start_header_right,
-                                                                      size_weight=args.size_weight_right)
-    
-    comparison = TextMatcher(left_paragraphs, 
-                             right_paragraphs, 
-                             args.ratio_threshold, 
-                             args.length_threshold).generate_comparison()
-    
-    left_heading_sequence = create_graph_builder(comparison, "heading_number_left").find_best_path_in_sequence()
-    set_best_path(comparison, left_heading_sequence, "heading_number_left", "heading_text_left")
-
-    right_heading_sequence = create_graph_builder(comparison, "heading_number_right").find_best_path_in_sequence()
-    set_best_path(comparison, right_heading_sequence, "heading_number_right", "heading_text_right")    
+    comparison = compare_documents(args.left_file, args.right_file, CompareRequest(size_weight_left=args.size_weight_left,
+                                               size_weight_right=args.size_weight_right,
+                                               header_left=args.header_left,
+                                               header_right=args.header_right,
+                                               footer_left=args.footer_left,
+                                               footer_right=args.footer_right,
+                                               ratio_threshold=args.ratio_threshold, 
+                                               length_threshold=args.length_threshold), 
+                                               "html")    
     
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")
                           .sort_values(["position", "position_secondary"])
-                          .drop(columns=["text_left", "text_right", "position", "position_secondary"])
+                          .drop(columns=["position", "position_secondary"])
                           .astype(str))   
     
     styles = [
