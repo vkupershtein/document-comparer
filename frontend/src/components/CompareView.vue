@@ -1,93 +1,75 @@
 <template>
-    <div class="p-6 max-w-screen-xl mx-auto">
-      <h1 class="text-2xl font-bold mb-4">PDF Comparison Tool</h1>
-      <form @submit.prevent="submitForm" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block font-semibold mb-1">Left PDF File:</label>
-            <input type="file" @change="e => files.left = e.target.files[0]" required />
-          </div>
-          <div>
-            <label class="block font-semibold mb-1">Right PDF File:</label>
-            <input type="file" @change="e => files.right = e.target.files[0]" required />
-          </div>
+  <div>
+    <form class="flex flex-col gap-2 justify-center w-md m-4" @submit.prevent="submitFiles">
+      <input class="p-1 cursor-pointer" type="file" @change="handleFileUpload($event, 'left')" accept="application/pdf" required />
+      <input class="p-1 cursor-pointer" type="file" @change="handleFileUpload($event, 'right')" accept="application/pdf" required />
+      <button type="submit">Compare</button>
+    </form>
+
+    <ProgressSpinner v-if="loading" style="width: 50px; height: 50px;" strokeWidth="8" fill="transparent" animationDuration=".5s" aria-label="Loading" />
+
+    <DataTable v-if="comparisonResults.length > 0" :value="comparisonResults" paginator :rows="100" scrollable scrollHeight="600px" tableStyle="min-width: 50rem">
+      <template #header>
+        <div class="flex justify-start gap-2">
+          <button class="mr-3" @click="exportToExcel">Export to Excel</button>
+          <button class="mr-3" @click="exportToPDF">Export to PDF</button>
         </div>
+      </template>
+      <Column field="type" header="Type" frozen />
+      <Column field="ratio" header="Similarity Ratio" frozen />
+      <Column field="heading_number_left" header="Heading # Left" />
+      <Column field="heading_text_left" header="Heading Left" />
+      <Column header="Text Left">
+        <template #body="slotProps">
+          <FormattedText :text="slotProps.data.text_left_report" />
+        </template>
+      </Column>      
+      <Column field="heading_number_right" header="Heading # Right" />
+      <Column field="heading_text_right" header="Heading Right" />
+      <Column header="Text Right">
+        <template #body="slotProps">
+          <FormattedText :text="slotProps.data.text_right_report" />
+        </template>
+      </Column>      
+      
+    </DataTable>
+  </div>
+</template>
   
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Compare PDFs
-        </button>
-      </form>
+<script setup>
+  import { ref } from 'vue';
+  import axios from 'axios';
+  import ProgressSpinner from 'primevue/progressspinner';
+  import DataTable from 'primevue/datatable';
+  import Column from 'primevue/column';
+  import FormattedText from '../components/FormattedText.vue';
+  import * as XLSX from 'xlsx';
+  import jsPDF from 'jspdf';
+  import autoTable from 'jspdf-autotable';
+
+  const leftFile = ref(null);
+  const rightFile = ref(null);
+  const loading = ref(false);
+  const comparisonResults = ref([]);
+
+  const handleFileUpload = (event, side) => {
+    const file = event.target.files[0];
+    if (side === 'left') leftFile.value = file;
+    else rightFile.value = file;
+  };
+
   
-      <div v-if="results.length" class="mt-10">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold">Comparison Result</h2>
-          <div class="space-x-2">
-            <button @click="downloadExcel" class="px-3 py-1 bg-green-600 text-white rounded">Download Excel</button>
-            <button @click="downloadPDF" class="px-3 py-1 bg-red-600 text-white rounded">Download PDF</button>
-          </div>
-        </div>
-  
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <h3 class="font-semibold mb-2">Left Document</h3>
-            <div v-for="(result, index) in paginatedResults" :key="index">
-              <div :class="getClass(result.type)">
-                <p v-html="formatText(result.text_left_report)"></p>
-              </div>
-            </div>
-          </div>
-          <div>
-            <h3 class="font-semibold mb-2">Right Document</h3>
-            <div v-for="(result, index) in paginatedResults" :key="index">
-              <div :class="getClass(result.type)">
-                <p v-html="formatText(result.text_right_report)"></p>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        <div class="mt-6 flex justify-center space-x-2">
-          <button @click="prevPage" :disabled="currentPage === 1" class="px-3 py-1 bg-gray-300 rounded">Previous</button>
-          <span>Page {{ currentPage }} of {{ totalPages }}</span>
-          <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 bg-gray-300 rounded">Next</button>
-        </div>
-      </div>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, computed } from 'vue'
-  import axios from 'axios'
-  import jsPDF from 'jspdf'
-  import autoTable from 'jspdf-autotable'
-  import * as XLSX from 'xlsx'
-  
-  const files = ref({ left: null, right: null })
-  const results = ref([])
-  const currentPage = ref(1)
-  const pageSize = 10
-  
-  const paginatedResults = computed(() => {
-    const start = (currentPage.value - 1) * pageSize
-    return results.value.slice(start, start + pageSize)
-  })
-  
-  const totalPages = computed(() => {
-    return Math.ceil(results.value.length / pageSize)
-  })
-  
-  const nextPage = () => {
-    if (currentPage.value < totalPages.value) currentPage.value++
-  }
-  
-  const prevPage = () => {
-    if (currentPage.value > 1) currentPage.value--
-  }
-  
-  const submitForm = async () => {
+  const submitFiles = async () => {
+    if (!leftFile.value || !rightFile.value) {
+      alert('Please select both PDF files.');
+      return;
+    }
+
+    loading.value = true;
+      
     const formData = new FormData()
-    formData.append('left_file', files.value.left)
-    formData.append('right_file', files.value.right)
+    formData.append('left_file', leftFile.value)
+    formData.append('right_file', rightFile.value)
     formData.append('header_left', 40)
     formData.append('footer_left', 40)
     formData.append('size_weight_left', 0.8)
@@ -96,73 +78,56 @@
     formData.append('size_weight_right', 0.8)
     formData.append('ratio_threshold', 0.5)
     formData.append('length_threshold', 30)
-  
+
     try {
-      const res = await axios.post('http://localhost:8000/upload/', formData)
-      results.value = res.data.comparison
-      currentPage.value = 1
-    } catch (err) {
-      alert('Comparison failed: ' + err.message)
+      const response = await axios.post('http://127.0.0.1:8000/upload/', formData);
+      comparisonResults.value = response.data.comparison;
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      alert('An error occurred during file upload.');
+    } finally {
+      loading.value = false;
     }
   }
   
-  const formatText = (text) => {
-    if (typeof text === 'string') return text
-    return text.map(t => `<span class="tag-${t.tag}">${t.subtext}</span>`).join('')
-  }
-  
-  const getClass = (type) => {
-    switch (type) {
-      case 'equal': return 'bg-green-100 p-2 rounded'
-      case 'insert': return 'bg-blue-100 p-2 rounded'
-      case 'delete': return 'bg-red-100 p-2 rounded'
-      case 'replace': return 'bg-yellow-100 p-2 rounded'
-      default: return 'p-2 rounded border'
-    }
-  }
-  
-  const downloadExcel = () => {
-    const rows = results.value.map((res, i) => [
-      res.type,
-      typeof res.text_left_report === 'string' ? res.text_left_report : res.text_left_report.map(t => t.subtext).join(''),
-      typeof res.text_right_report === 'string' ? res.text_right_report : res.text_right_report.map(t => t.subtext).join('')
-    ])
-  
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Type', 'Left Text', 'Right Text'],
-      ...rows
-    ])
-  
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Comparison')
-    XLSX.writeFile(workbook, 'comparison_result.xlsx')
-  }
-  
-  const downloadPDF = () => {
-    const doc = new jsPDF()
-    const rows = results.value.map((res) => [
-      res.type,
-      typeof res.text_left_report === 'string' ? res.text_left_report : res.text_left_report.map(t => t.subtext).join(''),
-      typeof res.text_right_report === 'string' ? res.text_right_report : res.text_right_report.map(t => t.subtext).join('')
-    ])
-  
+  const exportToExcel = () => {
+    const worksheetData = comparisonResults.value.map(result => ({
+      'Type': result.type,
+      'Similarity Ratio': result.ratio,
+      'Heading # Left': result.heading_number_left,
+      'Heading Left': result.heading_text_left,
+      'Text Left': typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),      
+      'Heading # Right': result.heading_number_right,
+      'Heading Right': result.heading_text_right,
+      'Text Right': typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' ')
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Comparison');
+    XLSX.writeFile(workbook, 'comparison.xlsx');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableData = comparisonResults.value.map(result => [
+      result.type,
+      result.ratio, 
+      result.heading_number_left,
+      result.heading_text_left,
+      typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),
+      result.heading_number_right,
+      result.heading_text_right,
+      typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' ') 
+    ]);
     autoTable(doc, {
-      head: [['Type', 'Left Text', 'Right Text']],
-      body: rows
-    })
-  
-    doc.save('comparison_result.pdf')
-  }
-  </script>
-  
-  <style>
-  .tag-insert {
-    background-color: #e6ffed;
-  }
-  .tag-delete {
-    background-color: #fee2e2;
-  }
-  .tag-replace {
-    background-color: #fef9c3;
-  }
-  </style>
+      head: [[
+        'Type', 'Similarity Ratio', 'Heading # Left', 'Heading Left', 
+        'Text Left', 'Heading # Right', 'Heading Right', 'Text Right'         
+      ]],
+      body: tableData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+    doc.save('comparison.pdf');
+  };
+</script> 
