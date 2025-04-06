@@ -3,12 +3,21 @@ CLI for document comparer
 """
 
 from argparse import ArgumentParser
+import logging
 import os
 
 import pandas as pd
 
 from schemas import CompareRequest
 from use_cases import compare_documents
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+pdf_logger = logging.getLogger("pdfminer")
+pdf_logger.setLevel(logging.ERROR)
 
 def cli():
     """
@@ -41,7 +50,9 @@ def cli():
                                                footer_right=args.footer_right,
                                                ratio_threshold=args.ratio_threshold, 
                                                length_threshold=args.length_threshold), 
-                                               "html")    
+                                               "html")
+
+    logger.info("Produce HTML report")    
     
     comparison_html_df = (pd.DataFrame.from_records(comparison)
                           .fillna("")

@@ -1,10 +1,15 @@
-from typing import Annotated
+import logging
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from use_cases import compare_documents
 from schemas import CompareRequest
+
+logging.basicConfig(level=logging.INFO)
+
+pdf_logger = logging.getLogger("pdfminer")
+pdf_logger.setLevel(logging.ERROR)
 
 app = FastAPI()
 
