@@ -33,8 +33,6 @@ class CompareResult(BaseModel):
     type: str
     text_left_report: str | List[TaggedSubtext]
     text_right_report: str | List[TaggedSubtext]
-    position: int
-    position_secondary: int
     heading_number_left: str
     heading_text_left: str
     heading_number_right: str
