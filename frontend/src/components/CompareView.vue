@@ -2,8 +2,8 @@
   <div class="max-w-screen-xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">PDF Comparison Tool</h1>
     <form class="flex flex-col gap-2 justify-center items-start w-md m-4" @submit.prevent="submitFiles">
-      <input class="p-1 cursor-pointer" type="file" @change="handleFileUpload($event, 'left')" accept="application/pdf" required />
-      <input class="p-1 cursor-pointer" type="file" @change="handleFileUpload($event, 'right')" accept="application/pdf" required />
+      <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'left')" accept="application/pdf" required />
+      <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'right')" accept="application/pdf" required />
       <Button class="w-50" label="Compare" severity="contrast" type="submit" />
     </form>
 
@@ -101,7 +101,7 @@
   const filters = ref(getDefaultFilters())
 
   const handleFileUpload = (event, side) => {
-    const file = event.target.files[0];
+    const file = event.files[0];
     if (side === 'left') leftFile.value = file;
     else rightFile.value = file;
   };
@@ -237,4 +237,20 @@
     link.click();
     URL.revokeObjectURL(url);
   }; 
-</script> 
+</script>
+
+<style scoped>
+
+:deep(.p-fileupload-choose-button) {
+  background: #f1f5f9;
+  color:black;
+  border: 1px solid #f1f5f9;
+}
+
+:deep(.p-fileupload-choose-button:not(:disabled):hover) {
+  background: #e2e9f1;
+  color:black;
+  border: 1px solid #e2e9f1;  
+}
+
+</style>
