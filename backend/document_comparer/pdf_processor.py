@@ -83,7 +83,7 @@ class PDFProcessor:
             threshold = word["size"] * size_weight
 
             # Detect paragraph break
-            if current_para and spacing > threshold:
+            if current_para and (spacing > threshold or spacing < -threshold * 2):
                 paragraphs.append(" ".join(current_para).strip())
                 current_para = []
 
