@@ -9,6 +9,8 @@ from rapidfuzz import fuzz
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from document_comparer.paragraph import Paragraph
+
 from .utils import get_heading_info
 
 class TextMatcher:
@@ -16,15 +18,15 @@ class TextMatcher:
     Class to optimally match two lists of texts
     """
 
-    def __init__(self, texts_left: List[str], 
-                 texts_right: List[str], 
+    def __init__(self, texts_left: List[Paragraph], 
+                 texts_right: List[Paragraph], 
                  ratio_threshold: float, 
                  length_threshold: int):
         """
         Constructor of text matcher instance
         """
-        self.texts_left = texts_left
-        self.texts_right = texts_right
+        self.texts_left: List[Paragraph] = texts_left
+        self.texts_right: List[Paragraph] = texts_right
         self.ratio_threshold = ratio_threshold * 100
         self.length_threshold = length_threshold
 
@@ -94,14 +96,14 @@ class TextMatcher:
         
     
     @classmethod
-    def get_match_tags(cls, matched_texts_left: List[str], 
-                       matched_texts_right: List[str]):
+    def get_match_tags(cls, matched_texts_left: List[Paragraph], 
+                       matched_texts_right: List[Paragraph]):
         """
         Get match tags (or opcodes) from SequenceMatcher
         """
         all_opcodes = []
         for text_left, text_right in zip(matched_texts_left, matched_texts_right):            
-            all_opcodes.append(cls.get_edit_operations(text_left, text_right))
+            all_opcodes.append(cls.get_edit_operations(text_left.text, text_right.text))
         return all_opcodes
 
     @classmethod
@@ -122,14 +124,14 @@ class TextMatcher:
         return match_positions.index(current_position)
   
     @classmethod
-    def split_combined_text(cls, text_left: str, text_right: str,
+    def split_combined_text(cls, text_left: Paragraph, text_right: Paragraph,
                              positions: List[Tuple[str, int, int, int, int]], 
-                             length_threshold: float) -> Tuple[List[str], List[str]]:
+                             length_threshold: float) -> Tuple[List[Paragraph], List[Paragraph]]:
         """
         Split matched texts
         """
-        segments_left = []
-        segments_right = []
+        segments_left: List[Paragraph] = []
+        segments_right: List[Paragraph] = []
         current_left_index = 0
         current_right_index = 0
 
@@ -139,21 +141,25 @@ class TextMatcher:
             if ((tag == "delete" and left_end-left_start > length_threshold) 
                     or (tag == "insert" and right_end-right_start > length_threshold)):
                 if not first:
-                    segments_left.append(text_left[current_left_index:left_start].strip())
-                    segments_right.append(text_right[current_right_index:right_start].strip())
-                segments_left.append(text_left[left_start:left_end].strip())
-                segments_right.append(text_right[right_start:right_end].strip())                
+                    segments_left.append(Paragraph(text=text_left.text[current_left_index:left_start].strip(), 
+                                                   id=text_left.id))
+                    segments_right.append(Paragraph(text=text_right.text[current_right_index:right_start].strip(), 
+                                                    id=text_right.id))
+                segments_left.append(Paragraph(text=text_left.text[left_start:left_end].strip(), 
+                                               id=text_left.id))
+                segments_right.append(Paragraph(text=text_right.text[right_start:right_end].strip(), 
+                                                id=text_right.id))                
                 current_left_index = left_end            
                 current_right_index = right_end
             first = False
-        if current_left_index < len(text_left):
-            segments_left.append(text_left[current_left_index:].strip())
-        if current_right_index < len(text_right):
-            segments_right.append(text_right[current_right_index:].strip())                                
+        if current_left_index < len(text_left.text):
+            segments_left.append(Paragraph(text=text_left.text[current_left_index:].strip(), id=text_left.id))
+        if current_right_index < len(text_right.text):
+            segments_right.append(Paragraph(text=text_right.text[current_right_index:].strip(), id=text_right.id))                                
         return segments_left, segments_right 
 
     @classmethod
-    def calculate_score_matrix(cls, texts_left: List[str], texts_right: List[str]):
+    def calculate_score_matrix(cls, texts_left: List[Paragraph], texts_right: List[Paragraph]):
         """
         Calculate score matrix for two lists of texts
         """
@@ -161,12 +167,14 @@ class TextMatcher:
 
         for i, text1 in enumerate(texts_left):
             for j, text2 in enumerate(texts_right):
-                score_matrix[i][j] = fuzz.ratio(text1, text2)
+                score_matrix[i][j] = fuzz.ratio(text1.text, text2.text)
 
         return score_matrix
     
     @classmethod
-    def compute_optimal_matches(cls, texts_left: List[str], texts_right: List[str], ratio_threshold) -> List[Tuple[int, str, int, str, float]]:
+    def compute_optimal_matches(cls, texts_left: List[Paragraph], 
+                                texts_right: List[Paragraph], 
+                                ratio_threshold) -> List[Tuple[int, Paragraph, int, Paragraph, float]]:
         """
         Compute optimal matches algorithm
         """
@@ -208,8 +216,8 @@ class TextMatcher:
                                 + updated_texts_right 
                                 + self.texts_right[right_position+1:])
 
-        self.texts_left = [text for text in self.texts_left if len(text) > 0]
-        self.texts_right = [text for text in self.texts_right if len(text) > 0]             
+        self.texts_left = [text for text in self.texts_left if len(text.text) > 0]
+        self.texts_right = [text for text in self.texts_right if len(text.text) > 0]             
 
     def generate_comparison(self, mode:str="html"):
         """
@@ -228,14 +236,16 @@ class TextMatcher:
         report_method = self.get_match_html_report if mode == "html" else self.get_match_json_report
 
         for position_left, text_left, position_right, text_right, ratio in optimal_matches:            
-            heading_number_left, heading_text_left = get_heading_info(text_left)
-            heading_number_right, heading_text_right = get_heading_info(text_right)           
-            report_left, report_right, changed = report_method(text_left, text_right)            
+            heading_number_left, heading_text_left = get_heading_info(text_left.text)
+            heading_number_right, heading_text_right = get_heading_info(text_right.text)           
+            report_left, report_right, changed = report_method(text_left.text, text_right.text)            
             item = {
                 "ratio": float(round(ratio/100, 4)),
                 "type": "changed" if changed else "same",
-                "text_left": text_left,
-                "text_right": text_right,                 
+                "text_left_id": text_left.id,
+                "text_left": text_left.text,
+                "text_right_id": text_right.id,
+                "text_right": text_right.text,                 
                 "text_left_report": report_left,
                 "text_right_report": report_right,
                 "position": int(position_left),
@@ -252,12 +262,14 @@ class TextMatcher:
         
         for idx_left in texts_left_indices:
             text_left = self.texts_left[idx_left]
-            heading_number_left, heading_text_left = get_heading_info(text_left)
-            report_left, _, _ = report_method(text_left, "")
+            heading_number_left, heading_text_left = get_heading_info(text_left.text)
+            report_left, _, _ = report_method(text_left.text, "")
             item = {
                 "ratio": 0,
                 "type": "removed",
-                "text_left": text_left,
+                "text_left_id": text_left.id,
+                "text_left": text_left.text,
+                "text_right_id": "",
                 "text_right": "",                
                 "text_left_report": report_left,
                 "text_right_report": "",
@@ -275,15 +287,17 @@ class TextMatcher:
 
         for idx_right in texts_right_indices:
             text_right = self.texts_right[idx_right]
-            heading_number_right, heading_text_right = get_heading_info(text_right) 
-            _, report_right, _ = report_method("", text_right)
+            heading_number_right, heading_text_right = get_heading_info(text_right.text) 
+            _, report_right, _ = report_method("", text_right.text)
             closest_match_index = self.find_closest_match(match_positions_right, idx_right, -1) # type: ignore
             closest_match = optimal_matches[closest_match_index]
             item = {
                 "ratio": 0,
                 "type": "new",
+                "text_left_id": "",
                 "text_left": "",
-                "text_right": text_right,
+                "text_right_id": text_right.id,                
+                "text_right": text_right.text,
                 "text_left_report": "",                
                 "text_right_report": report_right,
                 "position": int(closest_match[0]),

@@ -31,7 +31,9 @@ class CompareResult(BaseModel):
     """
     ratio: float
     type: str
+    text_left_id: str
     text_left: str
+    text_right_id: str
     text_right: str
     text_left_report: str | List[TaggedSubtext]
     text_right_report: str | List[TaggedSubtext]

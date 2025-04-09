@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-screen-xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">PDF Comparison Tool</h1>
-    <form class="flex flex-col gap-2 justify-center items-start w-md m-4" @submit.prevent="submitFiles">
+    <h1 class="text-2xl font-bold mb-6">Doc Comparison Tool</h1>
+    <form class="flex flex-col gap-2 justify-center items-start w-md mt-4 mb-4" @submit.prevent="submitFiles">
       <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'left')" accept="application/pdf" required />
       <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'right')" accept="application/pdf" required />
       <Button class="w-50" label="Compare" severity="contrast" type="submit" />

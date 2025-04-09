@@ -22,12 +22,14 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
     """
     try:
         logger.info("Split pdf into paragraphs")
-        left_paragraphs = PDFProcessor(left_file).extract_paragraphs(top=args.header_left,  # type: ignore
-                                                                        bottom=args.footer_left,                                                                      
-                                                                        size_weight=args.size_weight_left)
-        right_paragraphs = PDFProcessor(right_file).extract_paragraphs(top=args.header_right,  # type: ignore
-                                                                        bottom=args.footer_right,                                                                      
-                                                                        size_weight=args.size_weight_right)
+        left_paragraphs = PDFProcessor(left_file, # type: ignore
+                                       top=args.header_left, 
+                                       bottom=args.footer_left, 
+                                       size_weight=args.size_weight_left).extract_paragraphs()
+        right_paragraphs = PDFProcessor(right_file, # type: ignore
+                                        top=args.header_right, 
+                                        bottom=args.footer_right, 
+                                        size_weight=args.size_weight_right).extract_paragraphs()
         logger.info("Make comparison")
         comparison = TextMatcher(left_paragraphs, 
                                 right_paragraphs, 
