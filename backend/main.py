@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import uvicorn
 
+from use_cases.processor_factory import detect_file_type
 from use_cases import compare_documents
 from schemas import CompareRequest, CompareResponse
 
@@ -30,8 +31,13 @@ async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                        left_file: UploadFile = File(...), 
                        right_file: UploadFile = File(...)) -> CompareResponse:
     
-    comparison = compare_documents(left_file.file, 
-                                   right_file.file, 
+    left_file_type = detect_file_type(left_file)
+    right_file_type = detect_file_type(right_file)
+    
+    comparison = compare_documents(left_file.file,
+                                   left_file_type, 
+                                   right_file.file,
+                                   right_file_type, 
                                    CompareRequest(header_left=header_left, 
                                                   header_right=header_right,
                                                   footer_left=footer_left,

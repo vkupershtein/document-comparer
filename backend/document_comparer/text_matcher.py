@@ -3,12 +3,14 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
+import re
 from typing import List, Tuple
 
 from rapidfuzz import fuzz
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
 
 from .utils import get_heading_info
@@ -48,6 +50,14 @@ class TextMatcher:
         return matcher.get_opcodes()
     
     @classmethod
+    def is_changed(cls, tag, subtext_left: str, subtext_right: str) -> bool:
+        if tag == 'equal':
+            return False
+        cleaned_subtext_left = JUNK_PATTERN.sub('', subtext_left)
+        cleaned_subtext_right = JUNK_PATTERN.sub('', subtext_right)
+        return cleaned_subtext_left != cleaned_subtext_right 
+    
+    @classmethod
     def get_match_html_report(cls, text_left: str, text_right: str):
         """
         Get match report with HTML tags
@@ -61,17 +71,19 @@ class TextMatcher:
             subtext_right = text_right[j1:j2]
             if not (subtext_left.strip() or subtext_right.strip()):
                 continue
-            if tag != "equal":
-                changed = True
+            subtext_changed = cls.is_changed(tag, subtext_left, subtext_right)
+            if tag != 'equal' and not subtext_changed:
+                tag = 'equal'            
             if tag == "delete":                
                 subtext_left = f'<span style="color: #FF3131;text-decoration: line-through;">{subtext_left}</span>'
-            elif tag == "replace":
+            elif tag == "replace":               
                 subtext_left = f'<span style="color: #FFBF00;">{subtext_left}</span>'
                 subtext_right = f'<span style="color: #FFBF00;">{subtext_right}</span>'
             elif tag == "insert":
                 subtext_right = f'<span style="color: #50C878;">{subtext_right}</span>'
             report_left.append(subtext_left)
             report_right.append(subtext_right)
+            changed = changed or subtext_changed
         return "".join(report_left), "".join(report_right), changed
     
     @classmethod
@@ -88,10 +100,12 @@ class TextMatcher:
             subtext_right = text_right[j1:j2]
             if not (subtext_left.strip() or subtext_right.strip()):
                 continue
-            if tag != "equal":
-                changed = True                        
+            subtext_changed = cls.is_changed(tag, subtext_left, subtext_right)
+            if tag != 'equal' and not subtext_changed:
+                tag = 'equal'                       
             report_left.append({"tag": tag, "subtext": subtext_left})
             report_right.append({"tag": tag, "subtext": subtext_right})
+            changed = changed or subtext_changed
         return report_left, report_right, changed 
         
     
@@ -139,23 +153,29 @@ class TextMatcher:
 
         for tag, left_start, left_end, right_start, right_end in positions:
             if ((tag == "delete" and left_end-left_start > length_threshold) 
-                    or (tag == "insert" and right_end-right_start > length_threshold)):
+                    or (tag == "insert" and right_end-right_start > length_threshold)):                
                 if not first:
                     segments_left.append(Paragraph(text=text_left.text[current_left_index:left_start].strip(), 
-                                                   id=text_left.id))
+                                                   id=text_left.id,
+                                                   payload=text_left.payload))
                     segments_right.append(Paragraph(text=text_right.text[current_right_index:right_start].strip(), 
-                                                    id=text_right.id))
+                                                    id=text_right.id,
+                                                   payload=text_right.payload))
                 segments_left.append(Paragraph(text=text_left.text[left_start:left_end].strip(), 
-                                               id=text_left.id))
+                                               id=text_left.id,
+                                               payload=text_left.payload))
                 segments_right.append(Paragraph(text=text_right.text[right_start:right_end].strip(), 
-                                                id=text_right.id))                
+                                                id=text_right.id,
+                                                payload=text_right.payload))                
                 current_left_index = left_end            
                 current_right_index = right_end
             first = False
         if current_left_index < len(text_left.text):
-            segments_left.append(Paragraph(text=text_left.text[current_left_index:].strip(), id=text_left.id))
+            segments_left.append(Paragraph(text=text_left.text[current_left_index:].strip(), id=text_left.id,
+                                                   payload=text_left.payload))
         if current_right_index < len(text_right.text):
-            segments_right.append(Paragraph(text=text_right.text[current_right_index:].strip(), id=text_right.id))                                
+            segments_right.append(Paragraph(text=text_right.text[current_right_index:].strip(), id=text_right.id,
+                                                   payload=text_right.payload))                                
         return segments_left, segments_right 
 
     @classmethod
@@ -215,7 +235,7 @@ class TextMatcher:
             self.texts_right = (self.texts_right[:right_position] 
                                 + updated_texts_right 
                                 + self.texts_right[right_position+1:])
-
+                       
         self.texts_left = [text for text in self.texts_left if len(text.text) > 0]
         self.texts_right = [text for text in self.texts_right if len(text.text) > 0]             
 
@@ -223,6 +243,7 @@ class TextMatcher:
         """
         Generate comparison object
         """
+        self.update_texts_combined()
         self.update_texts_combined()
         optimal_matches = self.compute_optimal_matches(self.texts_left, 
                                                        self.texts_right, 

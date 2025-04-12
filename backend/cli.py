@@ -8,6 +8,7 @@ import os
 
 import pandas as pd
 
+from use_cases.processor_factory import detect_file_type_on_name
 from schemas import CompareRequest
 from use_cases import compare_documents
 
@@ -39,18 +40,33 @@ def cli():
     parser.add_argument("--size_weight_right", type=float, default=0.8)
     parser.add_argument("--ratio_threshold", type=float, default=0.5)
     parser.add_argument("--length_threshold", type=int, default=80)        
+    parser.add_argument("--text_column_left", type = str, default=None)
+    parser.add_argument("--text_column_right", type = str, default=None) 
+    parser.add_argument("--id_column_left", type = str, default=None)
+    parser.add_argument("--id_column_right", type = str, default=None)
+
 
     args = parser.parse_args()
 
-    comparison = compare_documents(args.left_file, args.right_file, CompareRequest(size_weight_left=args.size_weight_left,
+    left_file_type = detect_file_type_on_name(args.left_file)
+    right_file_type = detect_file_type_on_name(args.right_file)
+
+    comparison = compare_documents(args.left_file, left_file_type, 
+                                   args.right_file, 
+                                   right_file_type, 
+                                   CompareRequest(size_weight_left=args.size_weight_left,
                                                size_weight_right=args.size_weight_right,
                                                header_left=args.header_left,
                                                header_right=args.header_right,
                                                footer_left=args.footer_left,
                                                footer_right=args.footer_right,
                                                ratio_threshold=args.ratio_threshold, 
-                                               length_threshold=args.length_threshold), 
-                                               "html")
+                                               length_threshold=args.length_threshold,
+                                               text_column_left=args.text_column_left,
+                                               text_column_right=args.text_column_right,
+                                               id_column_left=args.id_column_left,
+                                               id_column_right=args.id_column_right), 
+                                  "html")
 
     logger.info("Produce HTML report")    
     

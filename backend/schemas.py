@@ -2,7 +2,7 @@
 All API schemas
 """
 
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 class CompareRequest(BaseModel):
@@ -17,7 +17,21 @@ class CompareRequest(BaseModel):
     size_weight_right: float = Field(default=0.8)
     ratio_threshold: float = Field(default=0.5)
     length_threshold: int = Field(default=80)
+    text_column_left: Optional[str] = Field(default=None)
+    text_column_right: Optional[str] = Field(default=None) 
+    id_column_left: Optional[str] = Field(default=None)
+    id_column_right: Optional[str] = Field(default=None)
 
+class CompareRequestSingle(BaseModel):
+    """
+    Base arguments for one processor
+    """
+    header: int = Field(default=0)
+    footer: int = Field(default=0)
+    size_weight: float = Field(default=0.8)
+    text_column: Optional[str] = Field(default=None) 
+    id_column: Optional[str] = Field(default=None)
+       
 class TaggedSubtext(BaseModel):
     """
     Tagged subtext model
