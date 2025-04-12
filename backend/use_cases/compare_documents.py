@@ -23,7 +23,7 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
     Compare documents and get comparison report
     """
     try:
-        logger.info("Split pdf into paragraphs")
+        logger.info("Split pdf into paragraphs")        
         left_paragraphs = create_document_processor(left_file, 
                                                     CompareRequestSingle(header=args.header_left,
                                                                          footer=args.footer_left,
@@ -53,5 +53,5 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
 
         return comparison
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")    
+        raise HTTPException(status_code=400, detail=f"Error making comparison report: {str(e)}")    
 

@@ -27,7 +27,9 @@ app.add_middleware(
 async def upload_files(header_left: int = Form(40), footer_left: int = Form(40), 
                        size_weight_left: float = Form(0.8), header_right: int = Form(40),
                        footer_right: int = Form(40), size_weight_right: float = Form(0.8),
-                       ratio_threshold: float = Form(0.5), length_threshold: int = Form(30), 
+                       ratio_threshold: float = Form(0.5), length_threshold: int = Form(30),
+                       text_column_left: str = Form(''), text_column_right: str = Form(''),
+                       id_column_left: str = Form(''), id_column_right: str = Form(''), 
                        left_file: UploadFile = File(...), 
                        right_file: UploadFile = File(...)) -> CompareResponse:
     
@@ -45,7 +47,11 @@ async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                                                   size_weight_left=size_weight_left,
                                                   size_weight_right=size_weight_right,
                                                   ratio_threshold=ratio_threshold,
-                                                  length_threshold=length_threshold), 
+                                                  length_threshold=length_threshold,
+                                                  text_column_left=text_column_left,
+                                                  text_column_right=text_column_right,
+                                                  id_column_left=id_column_left,
+                                                  id_column_right=id_column_right), 
                                     "json")
 
     comparison = (pd.DataFrame.from_records(comparison)
