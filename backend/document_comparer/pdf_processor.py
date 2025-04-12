@@ -16,15 +16,15 @@ from .utils import get_heading_info
 class PDFProcessor(DocumentProcessor):
     """Processes PDF files to extract structured paragraphs with heading detection."""
 
-    def __init__(self, 
-                 file_object: Union[BufferedReader, BytesIO, str], 
+    def __init__(self,
+                 file_object: Union[BufferedReader, BytesIO, str],
                  page_start: int = 0,
                  page_end: Optional[int] = None,
                  top_start: int = 0,
                  top: int = 0,
                  bottom: int = 0,
                  size_weight: float = 1.0
-        ):
+                 ):
         """Initialize PDFProcessor with a file object or path."""
         self.content = file_object
         self.page_start = page_start
@@ -32,34 +32,35 @@ class PDFProcessor(DocumentProcessor):
         self.top_start = top_start
         self.top = top
         self.bottom = bottom
-        self.size_weight = size_weight        
+        self.size_weight = size_weight
 
     def extract_paragraphs(self) -> List[Paragraph]:
         """
         Extract paragraphs from PDF with layout-aware processing.
-                  
+
         Returns:
             List of processed paragraphs maintaining document structure
         """
         paragraphs: List[Paragraph] = []
-        
+
         with pdfp.open(self.content) as pdf:
             pages = pdf.pages[self.page_start:self.page_end]
-            
+
             for page_idx, page in enumerate(pages):
                 is_first_page = page_idx == 0
                 crop_top = self.top_start if is_first_page else self.top
-                
+
                 # Crop page to content area
-                content_area = (0, crop_top, page.width, page.height - self.bottom)
+                content_area = (0, crop_top, page.width,
+                                page.height - self.bottom)
                 cropped_page = page.crop(content_area)
-                
+
                 # Extract words with font size information
                 words = cropped_page.extract_words(extra_attrs=["size"])
-                
+
                 # Split into preliminary paragraphs
                 page_paragraphs = self._split_paragraphs_by_spacing(words)
-                
+
                 # Process paragraphs with heading detection
                 self._process_page_paragraphs(page_paragraphs, paragraphs)
 
@@ -107,7 +108,7 @@ class PDFProcessor(DocumentProcessor):
             if idx == 0:
                 self._merge_with_previous(para, document_paragraphs)
             else:
-                document_paragraphs.append(Paragraph(text=para, 
+                document_paragraphs.append(Paragraph(text=para,
                                                      id=str(len(document_paragraphs))))
 
     def _merge_with_previous(
@@ -117,14 +118,16 @@ class PDFProcessor(DocumentProcessor):
     ) -> None:
         """Merge paragraph with previous content if not a valid heading."""
         heading_num, heading_text = get_heading_info(paragraph)
-        
-        if heading_num and heading_text:
-            document_paragraphs.append(Paragraph(text=paragraph, 
+
+        prev_heading_num, prev_heading_text = "", ""
+
+        if len(document_paragraphs) != 0:
+            prev_heading_num, prev_heading_text = get_heading_info(
+                document_paragraphs[-1].text)
+
+        if (heading_num and heading_text) or (prev_heading_num and prev_heading_text) or len(document_paragraphs) == 0:
+            document_paragraphs.append(Paragraph(text=paragraph,
                                                  id=str(len(document_paragraphs))))
-        elif document_paragraphs:
+        else:
             # Merge with previous paragraph
             document_paragraphs[-1].text += " " + paragraph
-        else:
-            # First paragraph in document
-            document_paragraphs.append(Paragraph(text=paragraph, 
-                                                 id=str(len(document_paragraphs))))
