@@ -22,7 +22,10 @@
       paginator 
       :rows="100" 
       scrollable 
-      scrollHeight="600px" 
+      scrollHeight="600px"
+      :showFilterMenu="false" 
+      :showFilterMatchModes="false"
+      :showFilterOperator="false"
       tableStyle="min-width: 50rem">
       <template #header>
         <div class="flex justify-between items-center">
@@ -53,28 +56,27 @@
             v-model="filterModel.value"
             @change="filterCallback()"
             :options="['same', 'changed', 'new', 'removed']"
-            placeholder="Select a change type"
+            placeholder="Change type"
             class="p-column-filter"
             style="width: 100%"
           />
         </template>    
       </Column>
       <Column field="ratio" header="Similarity Ratio" frozen />
-      <Column field="heading_number_left" header="Heading # Original" />
-      <Column field="heading_text_left" header="Heading Original" />
       <Column header="Original Text" style="max-width: 500px; min-width: 400px">
         <template #body="slotProps">
           <FormattedText :text="slotProps.data.text_left_report" />
         </template>
-      </Column>      
-      <Column field="heading_number_right" header="Heading # Updated" />
-      <Column field="heading_text_right" header="Heading Updated" />
+      </Column> 
       <Column header="Updated Text" style="max-width: 500px; min-width: 400px">
         <template #body="slotProps">
           <FormattedText :text="slotProps.data.text_right_report" />
         </template>
-      </Column>      
-      
+      </Column> 
+      <Column field="heading_number_left" header="Heading # Original" />
+      <Column field="heading_text_left" header="Heading Original" />                
+      <Column field="heading_number_right" header="Heading # Updated" />
+      <Column field="heading_text_right" header="Heading Updated" />        
     </DataTable>
   </div>
 </template>
@@ -208,12 +210,12 @@
         <tr>
           <td>${result.type}</td>
           <td>${result.ratio}</td>
-          <td>${result.heading_number_left}</td>
-          <td>${result.heading_text_left}</td>
           <td>${formatChunks(result.text_left_report)}</td>
-          <td>${result.heading_number_right}</td>          
-          <td>${result.heading_text_right}</td>                    
           <td>${formatChunks(result.text_right_report)}</td>
+          <td>${result.heading_number_left}</td>
+          <td>${result.heading_text_left}</td>          
+          <td>${result.heading_number_right}</td>          
+          <td>${result.heading_text_right}</td>         
         </tr>
       `;
     }).join('');
@@ -270,12 +272,12 @@
     const worksheetData = comparisonResults.value.map(result => ({
       'Type': result.type,
       'Similarity Ratio': result.ratio,
+      'Text Left': typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),
+      'Text Right': typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' '),
       'Heading # Left': result.heading_number_left,
-      'Heading Left': result.heading_text_left,
-      'Text Left': typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),      
+      'Heading Left': result.heading_text_left,          
       'Heading # Right': result.heading_number_right,
-      'Heading Right': result.heading_text_right,
-      'Text Right': typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' ')
+      'Heading Right': result.heading_text_right
     }));
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
@@ -307,6 +309,10 @@
   background: #e2e9f1;
   color:black;
   border: 1px solid #e2e9f1;  
+}
+
+:deep(.p-datatable-column-filter-button) {
+  display: none;
 }
 
 </style>
