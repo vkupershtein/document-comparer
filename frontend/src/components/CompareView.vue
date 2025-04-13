@@ -23,9 +23,7 @@
       :rows="100" 
       scrollable 
       scrollHeight="600px"
-      :showFilterMenu="false" 
-      :showFilterMatchModes="false"
-      :showFilterOperator="false"
+      showGridlines
       tableStyle="min-width: 50rem">
       <template #header>
         <div class="flex justify-between items-center">
