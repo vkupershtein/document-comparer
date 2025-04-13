@@ -72,7 +72,7 @@ def test_split_text_into_sentences_normal():
 
     sentences, positions = split_into_sentences(text)
     assert sentences == expected
-    assert positions == [0, 91]
+    assert positions == [0, 92]
 
 
 def test_split_text_into_sentences_one():
@@ -121,4 +121,4 @@ def test_split_text_complex():
     sentences, positions = split_into_sentences(
         text)  # pylint: disable=unbalanced-tuple-unpacking
     assert sentences == expected
-    assert positions == [0, 187, 212, 391, 459]
+    assert positions == [0, 188, 213, 392, 460]

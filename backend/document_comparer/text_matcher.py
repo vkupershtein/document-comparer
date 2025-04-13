@@ -3,7 +3,7 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
-from typing import List, Tuple
+from typing import List, Literal, Tuple
 
 from rapidfuzz import fuzz
 import numpy as np
@@ -12,7 +12,7 @@ from scipy.optimize import linear_sum_assignment
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
 
-from .utils import get_heading_info
+from .utils import align_end, align_start, get_heading_info, get_outer_positions, split_into_sentences
 
 
 class TextMatcher:
@@ -145,7 +145,8 @@ class TextMatcher:
 
     @classmethod
     def split_combined_text(cls, text_left: Paragraph, text_right: Paragraph,
-                            positions: List[Tuple[str, int, int, int, int]],
+                            opcodes: List[Tuple[Literal['replace', 'delete', 'insert', 'equal'],
+                                                int, int, int, int]],
                             length_threshold: float) -> Tuple[List[Paragraph], List[Paragraph]]:
         """
         Split matched texts
@@ -155,12 +156,28 @@ class TextMatcher:
         current_left_index = 0
         current_right_index = 0
 
-        first = True
+        _, split_pos_left = split_into_sentences(text_left.text)
+        _, split_pos_right = split_into_sentences(text_right.text)
 
-        for tag, left_start, left_end, right_start, right_end in positions:
+        split_pos_left.append(len(text_left.text))
+        split_pos_right.append(len(text_right.text))
+
+        for tag, left_start, left_end, right_start, right_end in opcodes:
             if ((tag == "delete" and left_end-left_start > length_threshold)
                     or (tag == "insert" and right_end-right_start > length_threshold)):
-                if not first:
+
+                left_start = align_start(left_start, text_left.text)
+                left_end = align_end(left_end, text_left.text)
+                right_start = align_start(right_start, text_right.text)
+                right_end = align_end(right_end, text_right.text)
+
+                left_start, left_end = get_outer_positions(
+                    split_pos_left, left_start, left_end)
+                right_start, right_end = get_outer_positions(
+                    split_pos_right, right_start, right_end)
+                left_condition = current_left_index <= left_start
+                right_condition = current_right_index <= right_start
+                if left_condition and right_condition:
                     segments_left.append(Paragraph(text=text_left.text[current_left_index:left_start].strip(),
                                                    id=text_left.id,
                                                    payload=text_left.payload))
@@ -175,7 +192,6 @@ class TextMatcher:
                                                 payload=text_right.payload))
                 current_left_index = left_end
                 current_right_index = right_end
-            first = False
         if current_left_index < len(text_left.text):
             segments_left.append(Paragraph(text=text_left.text[current_left_index:].strip(), id=text_left.id,
                                            payload=text_left.payload))

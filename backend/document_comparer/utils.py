@@ -3,6 +3,7 @@ Module with utility functions
 """
 
 from typing import List, Tuple
+from bisect import bisect_left, bisect_right
 
 import numpy as np
 
@@ -32,6 +33,23 @@ def recognize_first_sentence(text):
     return text
 
 
+def align_start(start, text):
+    """
+    Align start of the string to non-empty character
+    """
+    while text[start:start+1] == ' ':
+        start += 1
+    return start
+
+
+def align_end(end, text):
+    """
+    Align end of the string to non-empty character
+    """
+    while text[end:end+1] == ' ':
+        end -= 1
+    return end
+
 def split_into_sentences(text) -> Tuple[List, List]:
     """
     Split text into sentences
@@ -40,6 +58,8 @@ def split_into_sentences(text) -> Tuple[List, List]:
     sentences = []
     positions = []
     while pos < len(text):
+        while text[pos:pos+1] == ' ':
+            pos += 1
         sentence = recognize_first_sentence(text[pos:])
         positions.append(pos)
         pos += len(sentence)
@@ -48,6 +68,21 @@ def split_into_sentences(text) -> Tuple[List, List]:
             sentence = sentence.strip() + "."
         sentences.append(sentence)
     return sentences, positions
+
+
+def get_outer_positions(arr: List[int], left: int, right: int):
+    """
+    Get outer positions in the array for two numbers
+    """
+    pos_left = left
+    pos_right = right
+    i = bisect_right(arr, left)
+    if 0 < i < len(arr):
+        pos_left = arr[i-1]
+    j = bisect_left(arr, right)
+    if 0 < j < len(arr):
+        pos_right = arr[j]
+    return pos_left, pos_right
 
 
 def min_max_scale(arr):
