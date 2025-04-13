@@ -5,6 +5,7 @@ All API schemas
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+
 class CompareRequest(BaseModel):
     """
     Base arguments for compare
@@ -18,9 +19,10 @@ class CompareRequest(BaseModel):
     ratio_threshold: float = Field(default=0.5)
     length_threshold: int = Field(default=80)
     text_column_left: Optional[str] = Field(default=None)
-    text_column_right: Optional[str] = Field(default=None) 
+    text_column_right: Optional[str] = Field(default=None)
     id_column_left: Optional[str] = Field(default=None)
     id_column_right: Optional[str] = Field(default=None)
+
 
 class CompareRequestSingle(BaseModel):
     """
@@ -29,15 +31,17 @@ class CompareRequestSingle(BaseModel):
     header: int = Field(default=0)
     footer: int = Field(default=0)
     size_weight: float = Field(default=0.8)
-    text_column: Optional[str] = Field(default=None) 
+    text_column: Optional[str] = Field(default=None)
     id_column: Optional[str] = Field(default=None)
-       
+
+
 class TaggedSubtext(BaseModel):
     """
     Tagged subtext model
     """
     tag: str
     subtext: str
+
 
 class CompareResult(BaseModel):
     """
@@ -55,6 +59,7 @@ class CompareResult(BaseModel):
     heading_text_left: str
     heading_number_right: str
     heading_text_right: str
+
 
 class CompareResponse(BaseModel):
     """

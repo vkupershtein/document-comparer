@@ -1,0 +1,53 @@
+[MASTER]
+# A comma-separated list of package or module names from where C extensions may be loaded.
+extension-pkg-whitelist=
+
+[MESSAGES CONTROL]
+# Disable the message, report, category or checker with the given id(s).
+disable=
+
+[REPORTS]
+# Set the output format. Available formats are text, parseable, colorized, json, md, and html
+output-format = text
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=120
+
+# String used as indentation unit.
+indent-string='    '
+
+[LOGGING]
+# Format style used to check logging format string. `old`, `new`, `fstr`, or `percent`
+logging-format-style=old
+
+[IMPORTS]
+# Deprecated modules which should not be used
+deprecated-modules=
+
+[TYPECHECK]
+# List of decorators that produce context managers
+contextmanager-decorators=contextlib.contextmanager
+
+[VARIABLES]
+# A regular expression matching the name of dummy variables (i.e. expected to be unused).
+dummy-variables-rgx=_|dummy
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=5
+
+# Maximum number of locals for function / method body
+max-locals=15
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of branches for function / method body
+max-branches=12
+
+# Maximum number of statements in function / method body
+max-statements=50

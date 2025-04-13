@@ -3,7 +3,6 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
-import re
 from typing import List, Tuple
 
 from rapidfuzz import fuzz
@@ -52,6 +51,9 @@ class TextMatcher:
 
     @classmethod
     def is_changed(cls, tag, subtext_left: str, subtext_right: str) -> bool:
+        """
+        Recognize that text was changed
+        """
         if tag == 'equal':
             return False
         cleaned_subtext_left = JUNK_PATTERN.sub('', subtext_left)
