@@ -184,7 +184,7 @@
     console.log('Form data', formData);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/upload/', formData);
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload/`, formData);
       comparisonResults.value = response.data.comparison;
     } catch (error) {
       console.error('Error uploading files:', error);
