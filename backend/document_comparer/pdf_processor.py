@@ -5,12 +5,13 @@ Module to process PDF files and extract paragraphs.
 from io import BufferedReader, BytesIO
 from typing import List, Optional, Union
 
+import numpy as np
 import pdfplumber as pdfp
 
 from document_comparer.paragraph import Paragraph
 from document_comparer.processor_protocol import DocumentProcessor
 
-from .utils import get_heading_info
+from .utils import get_heading_info, get_lower_values, get_upper_values, shift_elements
 
 
 class PDFProcessor(DocumentProcessor):
@@ -43,6 +44,25 @@ class PDFProcessor(DocumentProcessor):
         """
         paragraphs: List[Paragraph] = []
 
+        paged_document_words = self.extract_document_words()
+
+        non_break_pages = self.get_non_break_pages(paged_document_words)
+
+        for page_idx, words in enumerate(paged_document_words):
+            # Split into preliminary paragraphs
+            page_paragraphs = self._split_paragraphs_by_spacing(words)
+
+            # Process paragraphs with heading detection
+            self._process_page_paragraphs(
+                page_paragraphs, paragraphs, page_idx, non_break_pages)
+
+        return paragraphs
+
+    def extract_document_words(self):
+        """
+        Extract document words with metadata
+        """
+        page_words = []
         with pdfp.open(self.content) as pdf:
             pages = pdf.pages[self.page_start:self.page_end]
 
@@ -57,14 +77,9 @@ class PDFProcessor(DocumentProcessor):
 
                 # Extract words with font size information
                 words = cropped_page.extract_words(extra_attrs=["size"])
+                page_words.append(words)
 
-                # Split into preliminary paragraphs
-                page_paragraphs = self._split_paragraphs_by_spacing(words)
-
-                # Process paragraphs with heading detection
-                self._process_page_paragraphs(page_paragraphs, paragraphs)
-
-        return paragraphs
+            return page_words
 
     def _split_paragraphs_by_spacing(
         self,
@@ -97,37 +112,65 @@ class PDFProcessor(DocumentProcessor):
     def _process_page_paragraphs(
         self,
         page_paragraphs: List[str],
-        document_paragraphs: List[Paragraph]
+        document_paragraphs: List[Paragraph],
+        page_idx: int,
+        non_break_pages: List[int]
     ) -> None:
         """Process paragraphs from a single page with heading detection."""
         for idx, para in enumerate(page_paragraphs):
             if not para:
                 continue  # Skip empty paragraphs
 
+            page_non_break_condition = False
+
+            if idx == 0 and page_idx in non_break_pages and len(document_paragraphs) != 0:
+                current_head_condition = self._has_heading(para)
+                prev_head_condition = self._has_heading(
+                    document_paragraphs[-1].text)
+                page_non_break_condition = not (
+                    current_head_condition or prev_head_condition)
+
             # Handle first paragraph of page specially
-            if idx == 0:
-                self._merge_with_previous(para, document_paragraphs)
+            if page_non_break_condition:
+                document_paragraphs[-1].text += " " + para
             else:
                 document_paragraphs.append(Paragraph(text=para,
                                                      id=str(len(document_paragraphs))))
 
-    def _merge_with_previous(
-        self,
-        paragraph: str,
-        document_paragraphs: List[Paragraph]
-    ) -> None:
-        """Merge paragraph with previous content if not a valid heading."""
+    def _has_heading(self, paragraph):
+        """
+        Check that paragraph has heading
+        """
         heading_num, heading_text = get_heading_info(paragraph)
+        return heading_num and heading_text
 
-        prev_heading_num, prev_heading_text = "", ""
+    def get_page_borders(self, paged_document_words):
+        """
+        Get borgers of each page
+        """
+        lefts = []
+        tops = []
+        rights = []
+        bottoms = []
+        for words in paged_document_words:
+            lefts.append(words[0]['x0'])
+            tops.append(words[0]['top'])
+            rights.append(words[-1]['x1'])
+            bottoms.append(words[-1]['bottom'])
+        return tops, lefts, rights, bottoms
 
-        if len(document_paragraphs) != 0:
-            prev_heading_num, prev_heading_text = get_heading_info(
-                document_paragraphs[-1].text)
-
-        if (heading_num and heading_text) or (prev_heading_num and prev_heading_text) or len(document_paragraphs) == 0:
-            document_paragraphs.append(Paragraph(text=paragraph,
-                                                 id=str(len(document_paragraphs))))
-        else:
-            # Merge with previous paragraph
-            document_paragraphs[-1].text += " " + paragraph
+    def get_non_break_pages(self, paged_document_words):
+        """
+        Get page number where paragraphs can be merged
+        """
+        tops, lefts, rights, bottoms = self.get_page_borders(
+            paged_document_words)
+        normal_tops = get_lower_values(tops)
+        normal_lefts = get_lower_values(lefts)
+        normal_rights = shift_elements(get_upper_values(rights), 1, True)
+        normal_bottoms = shift_elements(get_upper_values(bottoms), 1, True)
+        result = []
+        for top, left, right, bottom in zip(normal_tops, normal_lefts,
+                                            normal_rights, normal_bottoms):
+            result.append(top & left & right & bottom)
+        return list(np.where(result)[0])

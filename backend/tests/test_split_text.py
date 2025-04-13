@@ -1,7 +1,8 @@
 """
 Module to test text splitter
 """
-from document_comparer.utils import recognize_first_sentence
+from document_comparer.utils import recognize_first_sentence, split_into_sentences
+
 
 def test_sentence_recognition_normal():
     """
@@ -13,6 +14,7 @@ def test_sentence_recognition_normal():
 
     assert recognize_first_sentence(text) == expected
 
+
 def test_sentence_recognition_empty():
     """
     Test sentence recognition if empty text
@@ -22,6 +24,7 @@ def test_sentence_recognition_empty():
     expected = ""
 
     assert recognize_first_sentence(text) == expected
+
 
 def test_sentence_recognition_complex():
     """
@@ -33,6 +36,7 @@ def test_sentence_recognition_complex():
 
     assert recognize_first_sentence(text) == expected
 
+
 def test_sentence_recognition_one_sentence():
     """
     Test sentence recognition if only one sentence
@@ -43,6 +47,7 @@ def test_sentence_recognition_one_sentence():
 
     assert recognize_first_sentence(text) == expected
 
+
 def test_sentence_recognition_no_point():
     """
     Test sentence recognition if no point present
@@ -52,3 +57,66 @@ def test_sentence_recognition_no_point():
     expected = "Where to end the search"
 
     assert recognize_first_sentence(text) == expected
+
+
+def test_split_text_into_sentences_normal():
+    """
+    Standard case for splitting
+    """
+    text = "The document owner is responsible for maintaining document content, revisions, and updates." \
+        + " An Owner is considered a “Checker” in Teamcenter workflow release when they are not the document Author."
+
+    expected = ["The document owner is responsible for maintaining document content, revisions, and updates.",
+                "An Owner is considered a “Checker” in Teamcenter workflow release when they are not the document Author."]
+
+    sentences, positions = split_into_sentences(text)
+    assert sentences == expected
+    assert positions == [0, 91]
+
+
+def test_split_text_into_sentences_one():
+    """
+    Standard case for splitting one sentence
+    """
+    text = "The document owner is responsible for maintaining document content, revisions, and updates"
+
+    expected = [
+        "The document owner is responsible for maintaining document content, revisions, and updates"]
+
+    sentences, positions = split_into_sentences(text)
+    assert sentences == expected
+    assert positions == [0]
+
+
+def test_split_text_into_sentences_one_with_point():
+    """
+    Standard case for splitting one sentence with point
+    """
+    text = "The document owner is responsible for maintaining document content, revisions, and updates."
+
+    expected = [
+        "The document owner is responsible for maintaining document content, revisions, and updates."]
+
+    sentences, positions = split_into_sentences(text)
+    assert sentences == expected
+    assert positions == [0]
+
+
+def test_split_text_complex():
+    """
+    Complex case for splitting into sentences
+    """
+    text = "5.1.3. System Diagram The MPS consists of three functional layers as shown in Figure 5-1: " \
+        + "1. Input layer, which provides signal interface to the individual machine elements or subsystems. " \
+        + "2. Logic (permit) layer. This layer decides to either allow/maintain or inhibit the beam based on comparison of the input signals with parameters in the Beam Setup Database chosen by the Mode Controller." + \
+        " 3. Output layer, containing drivers to the Beam Inhibiting Devices. The layers are FPGA-based and fully programmable."
+
+    expected = ["5.1.3. System Diagram The MPS consists of three functional layers as shown in Figure 5-1: "
+                + "1. Input layer, which provides signal interface to the individual machine elements or subsystems.",
+                "2. Logic (permit) layer.", "This layer decides to either allow/maintain or inhibit the beam based on comparison of the input signals with parameters in the Beam Setup Database chosen by the Mode Controller.",
+                "3. Output layer, containing drivers to the Beam Inhibiting Devices.", "The layers are FPGA-based and fully programmable."]
+
+    sentences, positions = split_into_sentences(
+        text)  # pylint: disable=unbalanced-tuple-unpacking
+    assert sentences == expected
+    assert positions == [0, 187, 212, 391, 459]
