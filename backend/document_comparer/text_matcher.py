@@ -227,6 +227,77 @@ class TextMatcher:
                 for i, j in zip(row_idx, col_idx)
                 if score_matrix[i][j] > ratio_threshold]     # type: ignore
 
+    def update_try_merge(self):
+        """
+        Update texts by trying to merge with neighbours
+        """
+        optimal_matches = self.compute_optimal_matches(self.texts_left,
+                                                       self.texts_right,
+                                                       self.ratio_threshold)
+        match_positions_left, _, match_positions_right, _, _ = zip(
+            *optimal_matches)
+
+        texts_left_indices = list(range(len(self.texts_left)))
+        texts_right_indices = list(range(len(self.texts_right)))
+
+        for position_left, _, position_right, _, _ in optimal_matches:
+            texts_left_indices.remove(position_left)
+            texts_right_indices.remove(position_right)
+
+        left_indices_to_remove = []
+
+        for idx_left in texts_left_indices:
+            text_left = self.texts_left[idx_left]
+            closest_match_up_index = self.find_closest_match(
+                match_positions_left, idx_left, -1)  # type: ignore
+            closest_match_down_index = self.find_closest_match(
+                match_positions_left, idx_left, 1)  # type: ignore
+            closest_match_top = optimal_matches[closest_match_up_index]
+            closest_match_down = optimal_matches[closest_match_down_index]
+            updated_ratio_top = (fuzz.ratio(closest_match_top[1].text + ' '
+                                            + text_left.text, closest_match_top[3].text))
+            updated_ratio_down = (fuzz.ratio(text_left.text + ' '
+                                             + closest_match_down[1].text, closest_match_top[3].text))
+            top_diff = updated_ratio_top - closest_match_top[4]
+            down_diff = updated_ratio_down - closest_match_down[4]
+            if top_diff > 0 or down_diff > 0:
+                left_indices_to_remove.append(idx_left)
+                if top_diff > down_diff:
+                    closest_match_top[1].text += ' ' + text_left.text
+                else:
+                    closest_match_down[1].text = text_left.text + \
+                        ' ' + closest_match_down[1].text
+
+        for idx in reversed(left_indices_to_remove):
+            self.texts_left.pop(idx)
+
+        right_indices_to_remove = []
+
+        for idx_right in texts_right_indices:
+            text_right = self.texts_right[idx_right]
+            closest_match_up_index = self.find_closest_match(
+                match_positions_right, idx_right, -1)  # type: ignore
+            closest_match_down_index = self.find_closest_match(
+                match_positions_right, idx_right, 1)  # type: ignore
+            closest_match_top = optimal_matches[closest_match_up_index]
+            closest_match_down = optimal_matches[closest_match_down_index]
+            updated_ratio_top = (fuzz.ratio(closest_match_top[3].text + ' '
+                                            + text_right.text, closest_match_top[1].text))
+            updated_ratio_down = (fuzz.ratio(text_right.text + ' '
+                                             + closest_match_down[3].text, closest_match_top[1].text))
+            top_diff = updated_ratio_top - closest_match_top[4]
+            down_diff = updated_ratio_down - closest_match_down[4]
+            if top_diff > 0 or down_diff > 0:
+                right_indices_to_remove.append(idx_right)
+                if top_diff > down_diff:
+                    closest_match_top[3].text += ' ' + text_right.text
+                else:
+                    closest_match_down[3].text = text_right.text + \
+                        ' ' + closest_match_down[3].text
+
+        for idx in reversed(right_indices_to_remove):
+            self.texts_right.pop(idx)
+
     def update_texts_combined(self):
         """
         Update texts using optimal matching 
@@ -272,6 +343,7 @@ class TextMatcher:
         """
         self.update_texts_combined()
         self.update_texts_combined()
+        self.update_try_merge()
         optimal_matches = self.compute_optimal_matches(self.texts_left,
                                                        self.texts_right,
                                                        self.ratio_threshold)
