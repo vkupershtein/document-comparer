@@ -167,12 +167,12 @@
     formData.append('left_file', leftFile.value)
     formData.append('right_file', rightFile.value)
 
-    formData.append('header_left', 40)
-    formData.append('footer_left', 40)
-    formData.append('size_weight_left', 0.8)
-    formData.append('header_right', 40)
-    formData.append('footer_right', 40)
-    formData.append('size_weight_right', 0.8)
+    formData.append('header_left', 50)
+    formData.append('footer_left', 50)
+    formData.append('size_weight_left', 0.72)
+    formData.append('header_right', 50)
+    formData.append('footer_right', 50)
+    formData.append('size_weight_right', 0.72)
     formData.append('ratio_threshold', 0.5)
     formData.append('length_threshold', 30)
 

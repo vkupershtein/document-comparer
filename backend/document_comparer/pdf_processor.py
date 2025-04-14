@@ -89,6 +89,7 @@ class PDFProcessor(DocumentProcessor):
         paragraphs: List[str] = []
         current_para: List[str] = []
         prev_bottom = 0
+        prev_size = 0
 
         for word in words:
             # Calculate spacing from previous line
@@ -96,12 +97,14 @@ class PDFProcessor(DocumentProcessor):
             threshold = word["size"] * self.size_weight
 
             # Detect paragraph break
-            if current_para and (spacing > threshold or spacing < -threshold * 2):
+            if current_para and (spacing > threshold or
+                                 (spacing < -threshold * 2 and word["size"] > prev_size * 0.75)):
                 paragraphs.append(" ".join(current_para).strip())
                 current_para = []
 
             current_para.append(word["text"])
             prev_bottom = word["bottom"]
+            prev_size = word["size"]
 
         # Add final paragraph
         if current_para:
