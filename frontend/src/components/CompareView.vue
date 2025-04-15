@@ -150,7 +150,6 @@
 
   
   const submitFiles = async () => {
-    console.log('Submit');
     if (!leftFile.value || !rightFile.value) {
       toast.add({ severity: 'error', summary: 'File is not uploaded', detail: 'Please select both files', life: 3000 });
       return;
@@ -179,9 +178,7 @@
     formData.append('text_column_left', leftTextColumn.value)
     formData.append('id_column_left', leftIdColumn.value)
     formData.append('text_column_right', rightTextColumn.value)
-    formData.append('id_column_right', rightIdColumn.value)
-    
-    console.log('Form data', formData);
+    formData.append('id_column_right', rightIdColumn.value)   
 
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload/`, formData);
