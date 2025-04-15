@@ -2,13 +2,19 @@
   <Toast />
   <div class="max-w-screen-xl mx-auto">    
     <h1 class="text-2xl font-bold mb-6 ml-4">Doc Comparison Tool</h1>
-    <form class="flex flex-col gap-2 justify-center items-start w-md mt-4 mb-4 ml-4" @submit.prevent="submitFiles">
-      <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'left')" accept=".pdf,.xlsx" required />
+    <form class="flex flex-col gap-2 justify-center items-start w-md min-w-full max-w-md mt-4 mb-4 ml-4" @submit.prevent="submitFiles">
+      <div class="flex">
+        <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'left')" accept=".pdf,.xlsx" required />
+        <Button v-if="leftFile?.type === 'application/pdf'" v-tooltip.top="'Truncate repeated headers and footers'" class=".w-32 ml-2" label="Crop Page" @click="leftPreviewVisible = true" />
+      </div>
       <Select v-if="leftHeaders.length" v-model="leftTextColumn" :options="leftHeaders" placeholder="Left: Select Text Column" class="mb-2" />
-      <Select v-if="leftHeaders.length" v-model="leftIdColumn" :options="leftHeaders" placeholder="Left: Select ID Column (optional)" class="mb-2" />    
-      <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'right')" accept=".pdf,.xlsx" required />
+      <Select v-if="leftHeaders.length" v-model="leftIdColumn" :options="leftHeaders" placeholder="Left: Select ID Column (optional)" class="mb-2" />  
+      <div class="flex">
+        <FileUpload class="p-1 cursor-pointer" mode="basic" custom-upload  @select="handleFileUpload($event, 'right')" accept=".pdf,.xlsx" required />
+        <Button v-if="rightFile?.type === 'application/pdf'" v-tooltip.top="'Truncate repeated headers and footers'" class=".w-32 ml-2" label="Crop Page" @click="rightPreviewVisible = true" />
+      </div>      
       <Select v-if="rightHeaders.length" v-model="rightTextColumn" :options="rightHeaders" placeholder="Left: Select Text Column" class="mb-2" />
-      <Select v-if="rightHeaders.length" v-model="rightIdColumn" :options="rightHeaders" placeholder="Left: Select ID Column (optional)" class="mb-2" />      
+      <Select v-if="rightHeaders.length" v-model="rightIdColumn" :options="rightHeaders" placeholder="Left: Select ID Column (optional)" class="mb-2" />     
       <Button class="w-50" label="Compare" severity="contrast" type="submit" />
     </form>
 
@@ -77,11 +83,18 @@
       <Column field="heading_text_right" header="Heading Updated" />        
     </DataTable>
   </div>
+  <Dialog v-model:visible="leftPreviewVisible" modal>
+    <PdfPreview v-if="leftFile?.type === 'application/pdf'" :file="leftFile" ref="leftPreview" />
+  </Dialog>
+  <Dialog v-model:visible="rightPreviewVisible" modal>
+    <PdfPreview v-if="rightFile?.type === 'application/pdf'" :file="rightFile" ref="rightPreview" />
+  </Dialog>  
 </template>
   
 <script setup>
-  import { ref } from 'vue';
+  import { useTemplateRef, ref } from 'vue';
   import { FilterMatchMode } from '@primevue/core/api'
+  import PdfPreview from './PdfPreview.vue';
   import axios from 'axios';
   import ProgressSpinner from 'primevue/progressspinner';
   import Toast from 'primevue/toast';
@@ -90,6 +103,7 @@
   import Button from 'primevue/button';  
   import InputText from 'primevue/inputtext';
   import FileUpload from 'primevue/fileupload';
+  import Dialog from 'primevue/dialog';
   import { Select } from 'primevue';
   import { useToast } from 'primevue/usetoast';
   import FormattedText from '../components/FormattedText.vue';
@@ -105,6 +119,12 @@
   const rightTextColumn = ref('');
   const leftIdColumn = ref('');
   const rightIdColumn = ref('');
+
+  const leftPreviewVisible = ref(false);
+  const rightPreviewVisible = ref(false);
+
+  const leftPreviewRef = useTemplateRef('leftPreview')
+  const rightPreviewRef = useTemplateRef('rightPreview')
   
   const toast = useToast();
 
@@ -161,16 +181,22 @@
     }
 
     loading.value = true;
+
+    const leftCrop = leftPreviewRef.value;
+    const rightCrop = rightPreviewRef.value;
+
+    console.log('Left Crop', leftCrop);
+    console.log('Right Crop', rightCrop);
       
     const formData = new FormData()
     formData.append('left_file', leftFile.value)
     formData.append('right_file', rightFile.value)
 
-    formData.append('header_left', 50)
-    formData.append('footer_left', 50)
+    formData.append('header_left', leftCrop?.header ?? 50);
+    formData.append('footer_left', leftCrop?.footer ?? 50);
     formData.append('size_weight_left', 0.72)
-    formData.append('header_right', 50)
-    formData.append('footer_right', 50)
+    formData.append('header_right', rightCrop?.header ?? 50);
+    formData.append('footer_right', rightCrop?.footer ?? 50);
     formData.append('size_weight_right', 0.72)
     formData.append('ratio_threshold', 0.5)
     formData.append('length_threshold', 30)
@@ -178,7 +204,9 @@
     formData.append('text_column_left', leftTextColumn.value)
     formData.append('id_column_left', leftIdColumn.value)
     formData.append('text_column_right', rightTextColumn.value)
-    formData.append('id_column_right', rightIdColumn.value)   
+    formData.append('id_column_right', rightIdColumn.value)
+    
+    console.log('Form Data', formData);
 
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload/`, formData);
@@ -298,12 +326,28 @@
   background: #f1f5f9;
   color:black;
   border: 1px solid #f1f5f9;
+  min-width: 8rem;
+  max-width: 8rem;
 }
 
 :deep(.p-fileupload-choose-button:not(:disabled):hover) {
   background: #e2e9f1;
   color:black;
   border: 1px solid #e2e9f1;  
+}
+
+:deep(.p-fileupload) {
+  flex-wrap: nowrap;
+  justify-content: start;
+  max-width: 24rem;
+  min-width: 24rem;
+}
+
+:deep(.p-fileupload span) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 :deep(.p-datatable-column-filter-button) {
