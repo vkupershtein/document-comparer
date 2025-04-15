@@ -76,7 +76,9 @@
         <template #body="slotProps">
           <FormattedText :text="slotProps.data.text_right_report" />
         </template>
-      </Column> 
+      </Column>
+      <Column v-if='leftIdColumn' field="text_left_id" header="ID # Original" />
+      <Column v-if='rightIdColumn' field="text_right_id" header="ID # Updated" /> 
       <Column field="heading_number_left" header="Heading # Original" />
       <Column field="heading_text_left" header="Heading Original" />                
       <Column field="heading_number_right" header="Heading # Updated" />
@@ -235,6 +237,8 @@
           <td>${result.ratio}</td>
           <td>${formatChunks(result.text_left_report)}</td>
           <td>${formatChunks(result.text_right_report)}</td>
+          <td>${result.text_left_id}</td>
+          <td>${result.text_right_id}</td>
           <td>${result.heading_number_left}</td>
           <td>${result.heading_text_left}</td>          
           <td>${result.heading_number_right}</td>          
@@ -274,12 +278,14 @@
             <tr>
               <th>Type</th>
               <th>Ratio</th>
+              <th>Text Left</th>
+              <th>Text Right</th>
+              <th>ID # Left</th>
+              <th>ID # Right</th>              
               <th>Heading # Left</th>
               <th>Heading Left</th>
-              <th>Text Left</th>
-              <th>Heading # Right</th>
-              <th>Heading Right</th>
-              <th>Text Right</th>                  
+              <th>Heading # Right</th>                      
+              <th>Heading Right</th>                                
             </tr>
           </thead>
           <tbody>
@@ -297,6 +303,8 @@
       'Similarity Ratio': result.ratio,
       'Text Left': typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),
       'Text Right': typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' '),
+      'ID # Left': result.text_left_id,
+      'ID # Right': result.text_right_id,
       'Heading # Left': result.heading_number_left,
       'Heading Left': result.heading_text_left,          
       'Heading # Right': result.heading_number_right,
