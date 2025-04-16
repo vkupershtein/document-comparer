@@ -156,10 +156,10 @@ class PDFProcessor(DocumentProcessor):
         rights = []
         bottoms = []
         for words in paged_document_words:
-            lefts.append(words[0]['x0'])
-            tops.append(words[0]['top'])
-            rights.append(words[-1]['x1'])
-            bottoms.append(words[-1]['bottom'])
+            lefts.append(words[0]['x0'] if len(words) > 0 else 0)
+            tops.append(words[0]['top'] if len(words) > 0 else 0)
+            rights.append(words[-1]['x1'] if len(words) > 0 else 0)
+            bottoms.append(words[-1]['bottom'] if len(words) > 0 else 0)
         return tops, lefts, rights, bottoms
 
     def get_non_break_pages(self, paged_document_words):
