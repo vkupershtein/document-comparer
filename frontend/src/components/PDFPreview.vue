@@ -28,7 +28,7 @@
   </template>
   
 <script setup>
-  import { ref, watch, onMounted, nextTick } from 'vue';
+  import { ref, watch, onMounted } from 'vue';
   import * as pdfjsLib from 'pdfjs-dist';
   import workerSrc from 'pdfjs-dist/build/pdf.worker?worker&url'
   import InputNumber from 'primevue/inputnumber';
@@ -41,8 +41,8 @@
     file: File
   });
   
-  const headerCrop = ref(50);
-  const footerCrop = ref(50);
+  const headerCrop = defineModel('headerCrop');
+  const footerCrop = defineModel('footerCrop');
   const canvas = ref(null);
   const maxHeight = ref(1000);
   const pageNumber = ref(1);
@@ -117,12 +117,7 @@
       loadPdf();
     }
   }); 
-  
-  defineExpose({
-      header: headerCrop,
-      footer: footerCrop
-    });
-    
+      
 </script>
   
 <style scoped>

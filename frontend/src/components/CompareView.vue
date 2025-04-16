@@ -86,17 +86,17 @@
     </DataTable>
   </div>
   <Dialog v-model:visible="leftPreviewVisible" modal>
-    <PdfPreview v-if="leftFile?.type === 'application/pdf'" :file="leftFile" ref="leftPreview" />
+    <PdfPreview v-if="leftFile?.type === 'application/pdf'" v-model:header-crop="leftHeaderCrop" v-model:footer-crop="leftFooterCrop" :file="leftFile" />
   </Dialog>
   <Dialog v-model:visible="rightPreviewVisible" modal>
-    <PdfPreview v-if="rightFile?.type === 'application/pdf'" :file="rightFile" ref="rightPreview" />
+    <PdfPreview v-if="rightFile?.type === 'application/pdf'" v-model:header-crop="rightHeaderCrop" v-model:footer-crop="rightFooterCrop" :file="rightFile" />
   </Dialog>  
 </template>
   
 <script setup>
-  import { useTemplateRef, ref } from 'vue';
+  import { ref } from 'vue';
   import { FilterMatchMode } from '@primevue/core/api'
-  import PdfPreview from './PdfPreview.vue';
+  import PdfPreview from '../components/PdfPreview.vue';
   import axios from 'axios';
   import ProgressSpinner from 'primevue/progressspinner';
   import Toast from 'primevue/toast';
@@ -122,12 +122,14 @@
   const leftIdColumn = ref('');
   const rightIdColumn = ref('');
 
-  const leftPreviewVisible = ref(false);
-  const rightPreviewVisible = ref(false);
+  const leftPreviewVisible = ref(false)
+  const rightPreviewVisible = ref(false)
 
-  const leftPreviewRef = useTemplateRef('leftPreview')
-  const rightPreviewRef = useTemplateRef('rightPreview')
-  
+  const leftHeaderCrop = ref(50);
+  const leftFooterCrop = ref(50);
+  const rightHeaderCrop = ref(50);
+  const rightFooterCrop = ref(50);
+
   const toast = useToast();
 
   const getDefaultFilters = () => ({
@@ -183,32 +185,24 @@
     }
 
     loading.value = true;
-
-    const leftCrop = leftPreviewRef.value;
-    const rightCrop = rightPreviewRef.value;
-
-    console.log('Left Crop', leftCrop);
-    console.log('Right Crop', rightCrop);
-      
+    
     const formData = new FormData()
     formData.append('left_file', leftFile.value)
     formData.append('right_file', rightFile.value)
 
-    formData.append('header_left', leftCrop?.header ?? 50);
-    formData.append('footer_left', leftCrop?.footer ?? 50);
+    formData.append('header_left', leftHeaderCrop.value ?? 50);
+    formData.append('footer_left', leftFooterCrop.value ?? 50);
     formData.append('size_weight_left', 0.72)
-    formData.append('header_right', rightCrop?.header ?? 50);
-    formData.append('footer_right', rightCrop?.footer ?? 50);
+    formData.append('header_right', rightHeaderCrop.value ?? 50);
+    formData.append('footer_right', rightFooterCrop.value ?? 50);
     formData.append('size_weight_right', 0.72)
-    formData.append('ratio_threshold', 0.5)
+    formData.append('ratio_threshold', 0.7)
     formData.append('length_threshold', 30)
 
     formData.append('text_column_left', leftTextColumn.value)
     formData.append('id_column_left', leftIdColumn.value)
     formData.append('text_column_right', rightTextColumn.value)
-    formData.append('id_column_right', rightIdColumn.value)
-    
-    console.log('Form Data', formData);
+    formData.append('id_column_right', rightIdColumn.value)   
 
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload/`, formData);
