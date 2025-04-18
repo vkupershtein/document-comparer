@@ -3,16 +3,14 @@ Module to match collections of texts
 """
 
 from difflib import SequenceMatcher
-from typing import List, Literal, Tuple, Callable, Any
+from typing import List, Tuple, Callable, Any
 
-from rapidfuzz import fuzz
-import numpy as np
-from scipy.optimize import linear_sum_assignment
-
+from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
+from document_comparer.paragraph_merger import ParagraphMerger
 
-from .utils import align_end, align_start, get_heading_info, get_outer_positions, split_into_sentences
+from .utils import get_heading_info, split_into_sentences
 
 
 class TextMatcher:
@@ -31,14 +29,6 @@ class TextMatcher:
         self.texts_right: List[Paragraph] = texts_right
         self.ratio_threshold = ratio_threshold * 100
         self.length_threshold = length_threshold
-
-    @classmethod
-    def find_optimal_matches(cls, score_matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Find optimal matches for score matrix
-        """
-        row_idx, col_idx = linear_sum_assignment(score_matrix, maximize=True)
-        return row_idx, col_idx
 
     def find_closest_match(self, match_positions: List[int], text_position: int, step: int) -> int:
         """
@@ -153,233 +143,106 @@ class TextMatcher:
         return [cls.get_edit_operations(l.text, r.text)
                 for l, r in zip(matched_texts_left, matched_texts_right)]
 
-    @classmethod
-    def split_combined_text(cls, text_left: Paragraph, text_right: Paragraph,
-                            opcodes: List[Tuple[Literal['replace', 'delete', 'insert', 'equal'],
-                                                int, int, int, int]],
-                            length_threshold: float) -> Tuple[List[Paragraph], List[Paragraph]]:
-        """
-        Split matched texts based on opcodes and sentence boundaries.
-        """
-        segments_left: List[Paragraph] = []
-        segments_right: List[Paragraph] = []
-        current_left_index = 0
-        current_right_index = 0
-
-        _, split_pos_left = split_into_sentences(text_left.text)
-        _, split_pos_right = split_into_sentences(text_right.text)
-        split_pos_left.append(len(text_left.text))
-        split_pos_right.append(len(text_right.text))
-
-        for tag, left_start, left_end, right_start, right_end in opcodes:
-            if ((tag == "delete" and left_end - left_start > length_threshold)
-                    or (tag == "insert" and right_end - right_start > length_threshold)):
-                left_start = align_start(left_start, text_left.text)
-                left_end = align_end(left_end, text_left.text)
-                right_start = align_start(right_start, text_right.text)
-                right_end = align_end(right_end, text_right.text)
-
-                left_start, left_end = get_outer_positions(
-                    split_pos_left, left_start, left_end)
-                right_start, right_end = get_outer_positions(
-                    split_pos_right, right_start, right_end)
-
-                # Append any text between previous index and new start
-                if current_left_index <= left_start and current_right_index <= right_start:
-                    segments_left.append(Paragraph(text=text_left.text[current_left_index:left_start].strip(),
-                                                   id=text_left.id,
-                                                   payload=text_left.payload))
-                    segments_right.append(Paragraph(text=text_right.text[current_right_index:right_start].strip(),
-                                                    id=text_right.id,
-                                                    payload=text_right.payload))
-                segments_left.append(Paragraph(text=text_left.text[left_start:left_end].strip(),
-                                               id=text_left.id,
-                                               payload=text_left.payload))
-                segments_right.append(Paragraph(text=text_right.text[right_start:right_end].strip(),
-                                                id=text_right.id,
-                                                payload=text_right.payload))
-                current_left_index = left_end
-                current_right_index = right_end
-        if current_left_index < len(text_left.text):
-            segments_left.append(Paragraph(text=text_left.text[current_left_index:].strip(),
-                                           id=text_left.id,
-                                           payload=text_left.payload))
-        if current_right_index < len(text_right.text):
-            segments_right.append(Paragraph(text=text_right.text[current_right_index:].strip(),
-                                            id=text_right.id,
-                                            payload=text_right.payload))
-        return segments_left, segments_right
-
-    @classmethod
-    def calculate_score_matrix(cls, texts_left: List[Paragraph], texts_right: List[Paragraph]) -> np.ndarray:
-        """
-        Calculate score matrix based on fuzzy matching ratio for two lists of texts
-        """
-        score_matrix = np.zeros((len(texts_left), len(texts_right)))
-        for i, text1 in enumerate(texts_left):
-            for j, text2 in enumerate(texts_right):
-                score_matrix[i][j] = fuzz.ratio(text1.text, text2.text)
-        return score_matrix
-
-    @classmethod
-    def compute_optimal_matches(cls, texts_left: List[Paragraph],
-                                texts_right: List[Paragraph],
-                                ratio_threshold: float) -> List[Tuple[int, Paragraph, int, Paragraph, float]]:
-        """
-        Compute optimal matches using score matrix and Hungarian algorithm.
-        Only return matches exceeding the ratio threshold.
-        """
-        score_matrix = cls.calculate_score_matrix(texts_left, texts_right)
-        row_idx, col_idx = cls.find_optimal_matches(score_matrix)
-        return [(i, texts_left[i], j, texts_right[j], score_matrix[i][j])
-                for i, j in zip(row_idx, col_idx)
-                if score_matrix[i][j] > ratio_threshold]  # type: ignore
-
     def _update_segment(self, texts: List[Paragraph], pos: int, new_segments: List[Paragraph]) -> List[Paragraph]:
         """
         Helper to update list of texts at given position with new segments.
         """
         return texts[:pos] + new_segments + texts[pos + 1:]
 
-    def _attempt_merge(self, idx: int, text_obj: Paragraph,
-                       match_positions: List[int],
-                       optimal_matches: List[Tuple[int, Paragraph, int, Paragraph, float]],
-                       merge_index: int, opposing_index: int) -> bool:
+    def get_unmatched_texts_indices(self, match_positions_left: List[int],
+                                    match_positions_right: List[int]):
         """
-        Helper to try merging a text with its closest neighbour based on fuzzy ratio improvement.
-        For left texts use merge_index=1 (updating text_left) and opposing_index=3 (reference text_right);
-        for right texts use merge_index=3 and opposing_index=1.
-        Returns True if merge occurred.
+        Get indices of the unmatched texts. 
+        These are texts that were potentially removed or added
         """
-        step_options = [-1, 1]
-        best_diff = 0
-        best_merge = None
-
-        for step in step_options:
-            neighbor_idx = self.find_closest_match(match_positions, idx, step)
-            if neighbor_idx == -1:
-                continue
-            neighbor_match = optimal_matches[neighbor_idx]
-            neighbour_para = neighbor_match[merge_index]
-            neighbour_para_oppose = neighbor_match[opposing_index]
-            if not (isinstance(neighbour_para, Paragraph)
-                    and isinstance(neighbour_para_oppose, Paragraph)):
-                continue
-            # Calculate updated ratios based on merge direction
-            if step == -1:
-                merged_text = neighbour_para.text + \
-                    ' ' + text_obj.text
-            else:
-                merged_text = text_obj.text + ' ' + \
-                    neighbour_para.text
-            updated_ratio = fuzz.ratio(
-                merged_text, neighbour_para_oppose.text)
-            diff = updated_ratio - neighbor_match[4]
-            if diff > best_diff:
-                best_diff = diff
-                best_merge = (neighbor_idx, step)
-        if best_diff > 0 and best_merge:
-            neighbor_idx, step = best_merge
-            neighbor_match = optimal_matches[neighbor_idx]
-            neighbour_para = neighbor_match[merge_index]
-            if not isinstance(neighbour_para, Paragraph):
-                return False
-            if step == -1:
-                neighbour_para.text += ' ' + \
-                    text_obj.text
-            else:
-                neighbour_para.text = text_obj.text + \
-                    ' ' + neighbour_para.text
-            return True
-        return False
-
-    def update_try_merge(self):
-        """
-        Update texts by trying to merge with neighbours using improved matching ratios.
-        Uses a helper (_attempt_merge) for common merge logic.
-        """
-        optimal_matches = self.compute_optimal_matches(
-            self.texts_left, self.texts_right, self.ratio_threshold)
-        # Extract positions from optimal matches for easier lookup
-        match_positions_left = [match[0] for match in optimal_matches]
-        match_positions_right = [match[2] for match in optimal_matches]
-
         texts_left_indices = list(range(len(self.texts_left)))
         texts_right_indices = list(range(len(self.texts_right)))
         # Remove indices already matched optimally
-        for pos_left, _, pos_right, _, _ in optimal_matches:
+        for pos_left, pos_right in zip(match_positions_left, match_positions_right):
             texts_left_indices.remove(pos_left)
             texts_right_indices.remove(pos_right)
+        return texts_left_indices, texts_right_indices
 
-        left_indices_to_remove = []
-        # Attempt merging for left side texts
-        for idx in texts_left_indices:
-            text_left = self.texts_left[idx]
-            if self._attempt_merge(idx, text_left, match_positions_left, optimal_matches,
-                                   merge_index=1, opposing_index=3):
-                left_indices_to_remove.append(idx)
-        for idx in sorted(left_indices_to_remove, reverse=True):
-            self.texts_left.pop(idx)
-
-        right_indices_to_remove = []
-        # Attempt merging for right side texts using symmetric logic
-        for idx in texts_right_indices:
-            text_right = self.texts_right[idx]
-            if self._attempt_merge(idx, text_right, match_positions_right, optimal_matches,
-                                   merge_index=3, opposing_index=1):
-                right_indices_to_remove.append(idx)
-        for idx in sorted(right_indices_to_remove, reverse=True):
-            self.texts_right.pop(idx)
-
-    def update_texts_combined(self):
+    @classmethod
+    def split_paragraph(cls, para: Paragraph) -> List[Paragraph]:
         """
-        Update texts using optimal matching and opcodes
-        to split combined texts based on sentence boundaries.
+        Split paragraph into sentence paragraphs
         """
-        optimal_matches = self.compute_optimal_matches(
+        texts, _ = split_into_sentences(para.text)
+        return [Paragraph(text=text, id=para.id, payload={**para.payload, "sent_pos": i})
+                for i, text in enumerate(texts)]
+
+    def update_merge_paragraphs(self):
+        """
+        Update paragraphs by merging neighbours based on matches
+
+        Delegates the actual merging to the ParagraphMerger class
+        """
+        merger = ParagraphMerger()
+
+        self.texts_left, self.texts_right = merger.merge_paragraphs(self.texts_left,
+                                                                    self.texts_right,
+                                                                    self.ratio_threshold)
+
+    @classmethod
+    def sorted_paragraphs(cls, paragraphs: List[Paragraph]) -> List[Paragraph]:
+        """
+        Sort paragraphs
+        """
+        return sorted(paragraphs,
+                      key=lambda para: (para.payload["para_pos"], para.payload.get("sent_pos", 0)))
+
+    def update_split_paragraphs(self):
+        """
+        Update paragraphs by splitting into sentences those that were unmatched        
+        """
+        optimal_matches = compute_optimal_matches(
             self.texts_left, self.texts_right, self.ratio_threshold)
-        # Unpack positions and texts from optimal matches
-        positions_left = [match[0] for match in optimal_matches]
-        matched_texts_left = [match[1] for match in optimal_matches]
-        positions_right = [match[2] for match in optimal_matches]
-        matched_texts_right = [match[3] for match in optimal_matches]
-        match_tags = self.get_match_tags(
-            matched_texts_left, matched_texts_right)
+        # Extract positions from optimal matches for easier lookup
+        match_positions_left = [match[0] for match in optimal_matches]
+        updated_paragraphs_left = [match[1] for match in optimal_matches]
+        match_positions_right = [match[2] for match in optimal_matches]
+        updated_paragraphs_right = [match[3] for match in optimal_matches]
 
-        # Process in reverse order to avoid list index shifts
-        for j, opcodes in enumerate(reversed(match_tags)):
-            pos = len(match_tags) - 1 - j
-            left_position = positions_left[pos]
-            right_position = positions_right[pos]
-            updated_left, updated_right = self.split_combined_text(
-                matched_texts_left[pos],
-                matched_texts_right[pos],
-                opcodes,
-                self.length_threshold
-            )
-            self.texts_left = self._update_segment(
-                self.texts_left, left_position, updated_left)
-            self.texts_right = self._update_segment(
-                self.texts_right, right_position, updated_right)
+        texts_left_indices, texts_right_indices = self.get_unmatched_texts_indices(
+            match_positions_left, match_positions_right
+        )
 
-        # Remove any texts that are empty
-        self.texts_left = [t for t in self.texts_left if t.text.strip()]
-        self.texts_right = [t for t in self.texts_right if t.text.strip()]
+        for para in updated_paragraphs_left:
+            para.payload["sent_pos"] = 0
+
+        for para in updated_paragraphs_right:
+            para.payload["sent_pos"] = 0
+
+        for idx_left in texts_left_indices:
+            para = self.texts_left[idx_left]
+            updated_paragraphs_left += self.split_paragraph(para)
+
+        for idx_right in texts_right_indices:
+            para = self.texts_right[idx_right]
+            updated_paragraphs_right += self.split_paragraph(para)
+
+        self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
+        self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
 
     def generate_comparison(self, mode: str = "html"):
         """
         Generate comparison object        
         """
         # Run the splitting phase twice
-        self.update_texts_combined()
-        self.update_texts_combined()
-        self.update_try_merge()
-        optimal_matches = self.compute_optimal_matches(
+        self.update_split_paragraphs()
+        self.update_merge_paragraphs()
+        optimal_matches = compute_optimal_matches(
             self.texts_left, self.texts_right, self.ratio_threshold)
 
+        match_positions_left = [match[0] for match in optimal_matches]
+        match_positions_right = [match[2] for match in optimal_matches]
+
+        texts_left_indices, texts_right_indices = self.get_unmatched_texts_indices(
+            match_positions_left, match_positions_right
+        )
+
         comparison_obj = []
-        texts_left_indices = list(range(len(self.texts_left)))
-        texts_right_indices = list(range(len(self.texts_right)))
 
         # Select reporting method based on mode
         report_method: Callable[[str, str], Tuple[Any, Any, bool]] = (
@@ -410,8 +273,6 @@ class TextMatcher:
                 "heading_text_right": heading_text_right
             }
             comparison_obj.append(item)
-            texts_left_indices.remove(pos_left)
-            texts_right_indices.remove(pos_right)
 
         # Process texts that were removed
         for idx in texts_left_indices:
@@ -439,8 +300,6 @@ class TextMatcher:
 
         # Process texts that are new on the right side.
         # We use the last match in optimal_matches to position the new text nearby.
-        match_positions_right = [match[2]
-                                 for match in optimal_matches] if optimal_matches else []
         for idx in texts_right_indices:
             text_right = self.texts_right[idx]
             heading_number_right, heading_text_right = get_heading_info(

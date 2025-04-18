@@ -2,13 +2,12 @@
 Module with utility functions
 """
 
-from typing import List, Tuple
+from typing import List, Set, Tuple
 from bisect import bisect_left, bisect_right
 
 import numpy as np
 
 from document_comparer.constants import HEADING_PATTERN
-
 
 def get_heading_info(text: str) -> Tuple[str, str]:
     """
@@ -49,6 +48,7 @@ def align_end(end, text):
     while text[end:end+1] == ' ':
         end -= 1
     return end
+
 
 def split_into_sentences(text) -> Tuple[List, List]:
     """
@@ -115,7 +115,7 @@ def shift_elements(arr, num, fill_value):
     """
     Shift elements with predefined step and fill value
     """
-    result = np.empty_like(arr)
+    result = np.empty_like(arr) # type: ignore
     if num > 0:
         result[:num] = fill_value
         result[num:] = arr[:-num]
@@ -124,4 +124,32 @@ def shift_elements(arr, num, fill_value):
         result[:num] = arr[-num:]
     else:
         result[:] = arr
+    return result
+
+
+def merge_sentences(sentences: List[str],
+                    sent_positions: Set[int]) -> List[str]:
+    """
+    Merge previously split paragraph in less paragraphs
+    if neighbouring sentences are in the set
+    """
+    result = []
+    temp = []
+    sign = True
+
+    for i, sentence in enumerate(sentences):
+        if i in sent_positions:
+            if not sign and temp:
+                result.append(temp)
+                temp = []
+            temp.append(sentence)
+            sign = True
+        else:
+            if sign and temp:
+                result.append(temp)
+                temp = []
+            temp.append(sentence)
+            sign = False
+    if temp:
+        result.append(temp)
     return result

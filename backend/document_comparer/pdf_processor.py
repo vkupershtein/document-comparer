@@ -137,8 +137,10 @@ class PDFProcessor(DocumentProcessor):
             if page_non_break_condition:
                 document_paragraphs[-1].text += " " + para
             else:
+                para_pos = len(document_paragraphs)
                 document_paragraphs.append(Paragraph(text=para,
-                                                     id=str(len(document_paragraphs))))
+                                                     id=str(para_pos),
+                                                     payload={"para_pos": para_pos}))
 
     def _has_heading(self, paragraph):
         """

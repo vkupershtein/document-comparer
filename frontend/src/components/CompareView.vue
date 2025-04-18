@@ -192,11 +192,11 @@
 
     formData.append('header_left', leftHeaderCrop.value ?? 50);
     formData.append('footer_left', leftFooterCrop.value ?? 50);
-    formData.append('size_weight_left', 0.72)
+    formData.append('size_weight_left', 0.8)
     formData.append('header_right', rightHeaderCrop.value ?? 50);
     formData.append('footer_right', rightFooterCrop.value ?? 50);
-    formData.append('size_weight_right', 0.72)
-    formData.append('ratio_threshold', 0.7)
+    formData.append('size_weight_right', 0.8)
+    formData.append('ratio_threshold', 0.9)
     formData.append('length_threshold', 30)
 
     formData.append('text_column_left', leftTextColumn.value)
