@@ -40,7 +40,9 @@ class ParagraphMerger:
         """
         # Step 1: Compute optimal matches and create lookup maps
         matched_paragraphs: List[Tuple[Paragraph, Paragraph]
-                                 ] = self._compute_and_get_matched_paragraphs(texts_left, texts_right, ratio_threshold)
+                                 ] = self._compute_and_get_matched_paragraphs(texts_left,
+                                                                              texts_right,
+                                                                              ratio_threshold)
         left_lookup_map, right_lookup_map = self._make_lookup_map_for_matches(
             matched_paragraphs)
 
@@ -140,8 +142,11 @@ class ParagraphMerger:
 
         # Handle cross-matching paragraphs
         if left_para and matched_left_para and right_para and matched_right_para:
-            self._handle_cross_match(left_para, right_para, left_texts_stack,
-                                     right_texts_stack)
+            self._handle_cross_match(left_para, right_para,
+                                     left_texts_stack,
+                                     right_texts_stack,
+                                     matched_left_para,
+                                     matched_right_para)
             return
 
         # Handle one-sided matches
@@ -216,14 +221,10 @@ class ParagraphMerger:
         # If we have temp paragraphs and we're not continuing in the same paragraph,
         # append them to results
         if self.temp_paragraphs_left and not (same_para_pos and self.sign_left):
-            self.merged_paragraphs_left.append(
-                self._join_paragraphs(self.temp_paragraphs_left))
-            self.temp_paragraphs_left = []
+            self._flush_left()
 
         if self.temp_paragraphs_right and not (same_para_pos and self.sign_left):
-            self.merged_paragraphs_right.append(
-                self._join_paragraphs(self.temp_paragraphs_right))
-            self.temp_paragraphs_right = []
+            self._flush_right()
 
         # Add current paragraphs to temp collections
         self.temp_paragraphs_left.append(left_para)
@@ -238,23 +239,25 @@ class ParagraphMerger:
         left_para: Paragraph,
         right_para: Paragraph,
         left_texts_stack: List[Paragraph],
-        right_texts_stack: List[Paragraph]
+        right_texts_stack: List[Paragraph],
+        match_left_para: Tuple[int, int],
+        match_right_para: Tuple[int, int]
     ) -> None:
         """Handle case where paragraphs have cross matches"""
         # Put paragraphs back on stacks to process later
-        left_texts_stack.append(left_para)
-        right_texts_stack.insert(-1, right_para)
+        self._cross_insert_stack(left_texts_stack,
+                                 right_texts_stack,
+                                 left_para,
+                                 right_para,
+                                 match_left_para,
+                                 match_right_para)
 
         # Finalize any accumulated temp paragraphs
         if self.temp_paragraphs_left:
-            self.merged_paragraphs_left.append(
-                self._join_paragraphs(self.temp_paragraphs_left))
-            self.temp_paragraphs_left = []
+            self._flush_left()
 
         if self.temp_paragraphs_right:
-            self.merged_paragraphs_right.append(
-                self._join_paragraphs(self.temp_paragraphs_right))
-            self.temp_paragraphs_right = []
+            self._flush_right()
 
     def _handle_left_match(
         self,
@@ -265,9 +268,7 @@ class ParagraphMerger:
         """Handle case where left paragraph has a match but right doesn't"""
         left_texts_stack.append(left_para)
         if self.temp_paragraphs_right and self.sign_right:
-            self.merged_paragraphs_right.append(
-                self._join_paragraphs(self.temp_paragraphs_right))
-            self.temp_paragraphs_right = []
+            self._flush_right()
         self.temp_paragraphs_right.append(right_para)
 
     def _handle_right_match(
@@ -279,9 +280,7 @@ class ParagraphMerger:
         """Handle case where right paragraph has a match but left doesn't"""
         right_texts_stack.append(right_para)
         if self.temp_paragraphs_left and self.sign_left:
-            self.merged_paragraphs_left.append(
-                self._join_paragraphs(self.temp_paragraphs_left))
-            self.temp_paragraphs_left = []
+            self._flush_left()
         self.temp_paragraphs_left.append(left_para)
 
     def _handle_no_match(
@@ -291,14 +290,10 @@ class ParagraphMerger:
     ) -> None:
         """Handle case where neither paragraph has a match"""
         if self.temp_paragraphs_left and self.sign_left:
-            self.merged_paragraphs_left.append(
-                self._join_paragraphs(self.temp_paragraphs_left))
-            self.temp_paragraphs_left = []
+            self._flush_left()
 
         if self.temp_paragraphs_right and self.sign_right:
-            self.merged_paragraphs_right.append(
-                self._join_paragraphs(self.temp_paragraphs_right))
-            self.temp_paragraphs_right = []
+            self._flush_right()
 
         if left_para:
             self.temp_paragraphs_left.append(left_para)
@@ -308,12 +303,10 @@ class ParagraphMerger:
     def _finalize_merge_results(self) -> None:
         """Finalize any remaining temporary paragraphs"""
         if self.temp_paragraphs_left:
-            self.merged_paragraphs_left.append(
-                self._join_paragraphs(self.temp_paragraphs_left))
+            self._flush_left()
 
         if self.temp_paragraphs_right:
-            self.merged_paragraphs_right.append(
-                self._join_paragraphs(self.temp_paragraphs_right))
+            self._flush_right()
 
     @staticmethod
     def _join_paragraphs(paragraphs: List[Paragraph]) -> Paragraph:
@@ -324,3 +317,67 @@ class ParagraphMerger:
         return Paragraph(text=" ".join([para.text for para in paragraphs]),
                          id=paragraphs[0].id,
                          payload=paragraphs[0].payload)
+
+    @classmethod
+    def _cross_insert_stack(cls, left_stack: List[Paragraph],
+                            right_stack: List[Paragraph],
+                            left_para: Paragraph,
+                            right_para: Paragraph,
+                            matched_left_para: Tuple[int, int],
+                            matched_right_para: Tuple[int, int]):
+        """
+        Return paragraphs to both stacks to align them with the matches
+        """
+        left_index = cls._index_paragraph(right_stack, matched_right_para)
+        right_index = cls._index_paragraph(left_stack, matched_left_para)
+
+        left_index = left_index - len(left_stack)
+        right_index = right_index - len(right_stack)
+
+        if left_index >= right_index:
+            if left_index < 0:
+                left_stack.insert(
+                    left_index, left_para)
+            else:
+                left_stack.append(left_para)
+            if right_index + 1 < 0:
+                right_stack.insert(right_index+1, right_para)
+            else:
+                right_stack.append(right_para)
+        else:
+            if right_index < 1:
+                right_stack.insert(right_index, right_para)
+            else:
+                right_stack.append(right_para)
+            if left_index + 1 < 0:
+                left_stack.insert(left_index+1, left_para)
+            else:
+                left_stack.append(left_para)
+
+    @staticmethod
+    def _index_paragraph(stack: List[Paragraph], matched_para: Tuple[int, int]) -> int:
+        """
+        Find matched paragraph in the stack
+        """
+        pos = len(stack)-1
+        for para in reversed(stack):
+            if para.payload["para_pos"] == matched_para[0] and para.payload["sent_pos"] == matched_para[1]:
+                return pos
+            pos -= 1
+        raise ValueError(f'{matched_para} not in the list')
+
+    def _flush_left(self):
+        """
+        Flush left side to the resulting paragraphs list
+        """
+        self.merged_paragraphs_left.append(
+            self._join_paragraphs(self.temp_paragraphs_left))
+        self.temp_paragraphs_left = []
+
+    def _flush_right(self):
+        """
+        Flush right side to the resulting paragraphs list
+        """
+        self.merged_paragraphs_right.append(
+            self._join_paragraphs(self.temp_paragraphs_right))
+        self.temp_paragraphs_right = []
