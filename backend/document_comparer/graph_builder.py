@@ -72,14 +72,14 @@ class GraphBuilder:
     @classmethod
     def find_larger(cls, element: Element, subsequence: List[Element], start_pos=0):
         for i, item in enumerate(subsequence):
-            if item.value > element.value and i >= start_pos:
+            if item > element and i >= start_pos:
                 return i
         return None
 
     @classmethod
     def find_smaller(cls, root_element: Element, element: Element, subsequence: List[Element], start_pos: int=0):
         for i, item in enumerate(subsequence):
-            if root_element.value < item.value < element.value and i >= start_pos:
+            if root_element < item < element and i >= start_pos:
                 return i
         return None            
 

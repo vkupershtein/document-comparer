@@ -180,9 +180,12 @@ class TextMatcher:
         """
         merger = ParagraphMerger()
 
-        self.texts_left, self.texts_right = merger.merge_paragraphs(self.texts_left,
-                                                                    self.texts_right,
-                                                                    self.ratio_threshold)
+        updated_paragraphs_left, updated_paragraphs_right = merger.merge_paragraphs(self.texts_left,
+                                                                                    self.texts_right,
+                                                                                    self.ratio_threshold)
+
+        self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
+        self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
 
     @classmethod
     def sorted_paragraphs(cls, paragraphs: List[Paragraph]) -> List[Paragraph]:
