@@ -5,6 +5,8 @@ find best pathways in it
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
+from document_comparer.constants import HARD_RECURSION_ITER_LIMIT
+
 @dataclass
 class Element:
     position: int
@@ -51,6 +53,7 @@ class GraphBuilder:
 
     def __init__(self, sequence: List[Tuple[str, Dict]]):
         self.graph, self.root_elements = self.make_full_graph(sequence)
+        self.counter = 0
 
     @classmethod
     def make_full_graph(cls, sequence: List[Tuple[str, Dict]]) -> Tuple[Dict[Element, List[Element]], List[Element]]:
@@ -133,7 +136,7 @@ class GraphBuilder:
         
         path = path + [start]        
         
-        if start not in self.graph or not self.graph[start]:
+        if start not in self.graph or not self.graph[start] or self.counter > HARD_RECURSION_ITER_LIMIT:
             all_paths.append(path)
             return all_paths
         
@@ -147,6 +150,7 @@ class GraphBuilder:
         for root_element in self.root_elements:
             candidate = self.find_best_path(self.find_paths(root_element))
             path_candidates.append(candidate)
+            self.counter = 0
         return self.find_best_path(path_candidates)
 
 def create_graph_builder(records: List[Dict[str, str|int]], value_key: str):
