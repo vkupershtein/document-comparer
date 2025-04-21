@@ -66,3 +66,15 @@ class CompareResponse(BaseModel):
     Compare response for API
     """
     comparison: List[CompareResult]
+
+class TaskIdResponse(BaseModel):
+    """
+    Task id response
+    """
+    task_id: str
+
+class ProgressResponse(BaseModel):
+    """
+    Task id response
+    """
+    progress: int

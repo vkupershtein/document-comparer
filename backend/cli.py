@@ -7,7 +7,7 @@ import os
 from argparse import ArgumentParser
 
 import pandas as pd
-from schemas import CompareRequest
+from internal.schemas import CompareRequest
 from use_cases import compare_documents
 from use_cases.processor_factory import detect_file_type_on_name
 

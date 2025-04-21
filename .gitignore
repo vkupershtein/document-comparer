@@ -10,3 +10,4 @@
 .vscode/*
 */.python-version
 */reports
+*/.env

@@ -6,28 +6,39 @@ from io import BufferedReader, BytesIO
 from typing import BinaryIO, Union
 
 from fastapi import UploadFile
-from schemas import CompareRequestSingle
+from internal.schemas import CompareRequestSingle
 from document_comparer.pdf_processor import PDFProcessor
 from document_comparer.excel_processor import ExcelProcessor
 
 
-def create_document_processor(file_object: Union[BufferedReader, BytesIO, str, BinaryIO], 
+def create_document_processor(file_object: Union[BufferedReader, BytesIO, str, BinaryIO],
                               args: CompareRequestSingle, mode: str):
+    """
+    Create document processor: PDF or Excel
+    """
     if mode == 'excel' and args.text_column:
-        return ExcelProcessor(file_object, args.text_column, args.id_column) # type: ignore
+        return ExcelProcessor(file_object,  # type: ignore
+                              args.text_column,
+                              args.id_column)
     elif mode == 'pdf':
         return PDFProcessor(file_object, top=args.header,  # type: ignore
-                                       bottom=args.footer, 
-                                       size_weight=args.size_weight)
+                            bottom=args.footer,
+                            size_weight=args.size_weight)
     raise ValueError('Processing mode should be either "excel" or "pdf"')
 
+
 def detect_file_type(upload_file: UploadFile) -> str:
+    """
+    Detect file type xlsx or pdf by content type
+    """
     content_type = upload_file.content_type
     if content_type == "application/pdf":
         return "pdf"
-    elif content_type in ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel"]:
+    if content_type in ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.ms-excel"]:
         return "excel"
     return "unknown"
+
 
 def detect_file_type_on_name(filename: str) -> str:
     """
