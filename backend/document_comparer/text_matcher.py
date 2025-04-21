@@ -28,6 +28,7 @@ class TextMatcher:
         self.texts_left: List[Paragraph] = texts_left
         self.texts_right: List[Paragraph] = texts_right
         self.ratio_threshold = ratio_threshold * 100
+        self.update_ratio_threshold = 90.0
         self.length_threshold = length_threshold
 
     def find_closest_match(self, match_positions: List[int], text_position: int, step: int) -> int:
@@ -182,7 +183,7 @@ class TextMatcher:
 
         updated_paragraphs_left, updated_paragraphs_right = merger.merge_paragraphs(self.texts_left,
                                                                                     self.texts_right,
-                                                                                    self.ratio_threshold)
+                                                                                    self.update_ratio_threshold)
 
         self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
         self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
@@ -200,7 +201,7 @@ class TextMatcher:
         Update paragraphs by splitting into sentences those that were unmatched        
         """
         optimal_matches = compute_optimal_matches(
-            self.texts_left, self.texts_right, self.ratio_threshold)
+            self.texts_left, self.texts_right, self.update_ratio_threshold)
         # Extract positions from optimal matches for easier lookup
         match_positions_left = [match[0] for match in optimal_matches]
         updated_paragraphs_left = [match[1] for match in optimal_matches]

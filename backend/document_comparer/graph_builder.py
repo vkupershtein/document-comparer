@@ -5,17 +5,24 @@ find best pathways in it
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
-from document_comparer.constants import HARD_RECURSION_ITER_LIMIT
+from document_comparer.constants import HARD_RECURSION_ITER_COEFF
+
 
 @dataclass
 class Element:
+    """
+    Graph element
+    """
     position: int
-    value: str    
+    value: str
     visited: bool
     metadata: Dict = field(default_factory=dict)
 
     @classmethod
     def compare_fct(cls, x: str):
+        """
+        Comparison function for graph elements
+        """
         sections = (s.split(".") for s in x.split("-"))
         tuple_list = []
         for subsection in sections:
@@ -27,10 +34,10 @@ class Element:
                     num_list.append(0)
             tuple_list.append(tuple(num_list))
         return tuple(tuple_list)
-    
+
     def __eq__(self, other):
-        return self.value == other.value and self.position==other.position
-    
+        return self.value == other.value and self.position == other.position
+
     def __lt__(self, other):
         return self.compare_fct(self.value) < self.compare_fct(other.value)
 
@@ -41,10 +48,11 @@ class Element:
         return self.compare_fct(self.value) > self.compare_fct(other.value)
 
     def __ge__(self, other):
-        return self.compare_fct(self.value) >= self.compare_fct(other.value)                    
+        return self.compare_fct(self.value) >= self.compare_fct(other.value)
 
     def __hash__(self):
         return hash((self.position, self.value))
+
 
 class GraphBuilder:
     """
@@ -54,9 +62,14 @@ class GraphBuilder:
     def __init__(self, sequence: List[Tuple[str, Dict]]):
         self.graph, self.root_elements = self.make_full_graph(sequence)
         self.counter = 0
+        self.hard_recursion_iter_limit = HARD_RECURSION_ITER_COEFF * \
+            len(sequence)
 
     @classmethod
     def make_full_graph(cls, sequence: List[Tuple[str, Dict]]) -> Tuple[Dict[Element, List[Element]], List[Element]]:
+        """
+        Create full graph
+        """
         element_sequence = cls.initialize_sequence(sequence)
         graph: Dict[Element, List[Element]] = {}
         root_elements: List[Element] = []
@@ -64,57 +77,77 @@ class GraphBuilder:
             graph_part = cls.find_larger_neighbours(element, element_sequence)
             if graph_part:
                 graph = graph | graph_part
-                root_elements.append(element)       
-            
+                root_elements.append(element)
+
         return graph, root_elements
 
     @classmethod
     def initialize_sequence(cls, sequence: List[Tuple[str, Dict]]):
+        """
+        Initialize element sequence
+        """
         return [Element(i, value, False, metadata) for i, (value, metadata) in enumerate(sequence)]
 
     @classmethod
     def find_larger(cls, element: Element, subsequence: List[Element], start_pos=0):
+        """
+        Find the next element larger than the given element
+        """
         for i, item in enumerate(subsequence):
             if item > element and i >= start_pos:
                 return i
         return None
 
     @classmethod
-    def find_smaller(cls, root_element: Element, element: Element, subsequence: List[Element], start_pos: int=0):
+    def find_smaller(cls, root_element: Element, element: Element, subsequence: List[Element], start_pos: int = 0):
+        """
+        Find the next element smaller than the given element and larger than the root element
+        """
         for i, item in enumerate(subsequence):
             if root_element < item < element and i >= start_pos:
                 return i
-        return None            
+        return None
 
     @classmethod
-    def find_larger_neighbours(cls, element: Element, sequence: List[Element]):    
+    def find_larger_neighbours(cls, element: Element, sequence: List[Element]):
+        """
+        Find neighbours of the element.
+        First neighbour of an element is the first element larger than the original.
+        Rest neighbours elements are the ones that go after the first neighbour and 
+        smaller than the first neighbour, but larger than original one
+        """
         if len(sequence) == 0 or element.visited:
             return {}
         element.visited = True
-        graph: Dict[Element, List[Element]] = {}    
+        graph: Dict[Element, List[Element]] = {}
         subsequence = sequence.copy()
-        neighbours: List[Element] = []    
-        pos = cls.find_larger(element, subsequence, element.position+1)    
+        neighbours: List[Element] = []
+        pos = cls.find_larger(element, subsequence, element.position+1)
         if pos is None:
             return graph
         current_neighbour = subsequence[pos]
         neighbours.append(current_neighbour)
-        current_position = pos+1        
+        current_position = pos+1
         while current_position < len(subsequence):
-            pos = cls.find_smaller(element, current_neighbour, subsequence, current_position)
+            pos = cls.find_smaller(
+                element, current_neighbour, subsequence, current_position)
             if pos is None:
-                break        
+                break
             neighbour = subsequence[pos]
-            neighbours.append(neighbour)        
+            neighbours.append(neighbour)
             current_neighbour = neighbour
             current_position = pos+1
         graph[element] = neighbours
         for neighbour_element in neighbours:
-            graph = graph | cls.find_larger_neighbours(neighbour_element, subsequence)
+            graph = graph | cls.find_larger_neighbours(
+                neighbour_element, subsequence)
         return graph
-    
+
     @classmethod
     def find_best_path(cls, paths: List[List[Element]]) -> List[Element]:
+        """
+        Find the best (longest) path from the given list of paths
+        """
         if len(paths) == 0:
             return []
         best_path = paths[0]
@@ -126,26 +159,32 @@ class GraphBuilder:
                 path_range = path[-1].position - path[0].position
                 if path_range < best_path_range:
                     best_path = path
-        return best_path    
-    
+        return best_path
+
     def find_paths(self, start: Element, path=None, all_paths=None) -> List[List[Element]]:
+        """
+        Find all paths in the graph to the leaf elements
+        """
         if path is None:
             path = []
         if all_paths is None:
             all_paths = []
-        
-        path = path + [start]        
-        
-        if start not in self.graph or not self.graph[start] or self.counter > HARD_RECURSION_ITER_LIMIT:
+
+        path = path + [start]
+
+        if start not in self.graph or not self.graph[start] or self.counter > self.hard_recursion_iter_limit:
             all_paths.append(path)
             return all_paths
-        
+
         for neighbor in self.graph[start]:
             self.find_paths(neighbor, path, all_paths)
-        
-        return all_paths   
-    
+
+        return all_paths
+
     def find_best_path_in_sequence(self) -> List[Element]:
+        """
+        Find best path in the graph
+        """
         path_candidates: List[List[Element]] = []
         for root_element in self.root_elements:
             candidate = self.find_best_path(self.find_paths(root_element))
@@ -153,15 +192,17 @@ class GraphBuilder:
             self.counter = 0
         return self.find_best_path(path_candidates)
 
-def create_graph_builder(records: List[Dict[str, str|int]], value_key: str):
+
+def create_graph_builder(records: List[Dict[str, str | int]], value_key: str):
     """
     Create graph builder from arbitrary dataset
     """
-    return GraphBuilder([(str(record[value_key]), {"record_position": i}) 
-                         for i, record in enumerate(records) 
+    return GraphBuilder([(str(record[value_key]), {"record_position": i})
+                         for i, record in enumerate(records)
                          if value_key in record and record[value_key] != ""])
 
-def set_best_path(records: List[Dict[str, str|int]], path: List[Element], value_key: str, *support_keys):
+
+def set_best_path(records: List[Dict[str, str | int]], path: List[Element], value_key: str, *support_keys):
     """
     Set best path to the dataset
     """
