@@ -18,7 +18,12 @@
       <Button class="w-50" label="Compare" severity="contrast" type="submit" />
     </form>
 
-    <ProgressSpinner v-if="loading" style="width: 50px; height: 50px;" strokeWidth="8" fill="transparent" animationDuration=".5s" aria-label="Loading" />
+    <Dialog v-model:visible="loading" modal header="Comparison in Progress" :style="{ width: '40rem' }">
+      <span class="text-surface-500 dark:text-surface-400 block mb-8 capitalize"> {{ taskStatus }}</span>
+      <ProgressBar :value="taskProgress" style="height: 20px;" class="mx-4 my-4"/>
+    </Dialog>
+
+    
 
     <DataTable v-if="comparisonResults.length > 0" 
       :value="comparisonResults"
@@ -94,7 +99,7 @@
 </template>
   
 <script setup>
-  import { ref } from 'vue';
+  import { ref, onBeforeUnmount } from 'vue';
   import { FilterMatchMode } from '@primevue/core/api'
   import PdfPreview from '../components/PdfPreview.vue';
   import axios from 'axios';
@@ -106,10 +111,16 @@
   import InputText from 'primevue/inputtext';
   import FileUpload from 'primevue/fileupload';
   import Dialog from 'primevue/dialog';
+  import ProgressBar from 'primevue/progressbar';
   import { Select } from 'primevue';
   import { useToast } from 'primevue/usetoast';
   import FormattedText from '../components/FormattedText.vue';
-  import * as XLSX from 'xlsx';  
+  import * as XLSX from 'xlsx'; 
+
+  const taskId = ref(null);
+  const taskProgress = ref(0);
+  const taskStatus = ref('')
+  const pollingInterval = ref(null); 
 
   const leftFile = ref(null);
   const rightFile = ref(null);
@@ -129,6 +140,12 @@
   const leftFooterCrop = ref(50);
   const rightHeaderCrop = ref(50);
   const rightFooterCrop = ref(50);
+
+  onBeforeUnmount(() => {
+    if (pollingInterval.value) {
+      clearInterval(pollingInterval.value);
+    }
+  });
 
   const toast = useToast();
 
@@ -184,6 +201,7 @@
       return;      
     }
 
+    taskStatus.value = "Wait..."
     loading.value = true;
     
     const formData = new FormData()
@@ -205,15 +223,47 @@
     formData.append('id_column_right', rightIdColumn.value)   
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/upload/`, formData);
-      comparisonResults.value = response.data.comparison;
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/start-task/`, formData);
+      taskId.value = response.data.task_id;
+      startPolling();
     } catch (error) {
       console.error('Error uploading files:', error);
       toast.add({ severity: 'error', summary: 'Processing error', detail: 'Error occured while making comparison report', life: 3000 });
-    } finally {
-      loading.value = false;
+      loading.value = False
     }
   }
+
+  const startPolling = () => {
+    taskProgress.value = 0;
+
+    pollingInterval.value = setInterval(async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/progress/${taskId.value}`);        
+        taskStatus.value = res.data.status
+        taskProgress.value = res.data.progress;
+
+        if (res.data.status === 'completed') {
+          clearInterval(pollingInterval.value);
+                   
+          const result = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/result/${taskId.value}`);
+          comparisonResults.value = result.data.comparison;
+          loading.value = false;
+        }
+
+        if (res.data.status === 'failed') {
+          clearInterval(pollingInterval.value);
+          loading.value = false;
+          toast.add({ severity: 'error', summary: 'Processing failed', detail: 'Task failed during processing', life: 3000 });
+        }        
+      } catch (error) {
+        clearInterval(pollingInterval.value);
+        loading.value = false;
+        console.error(error);
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to fetch task status', life: 3000 });
+      }
+    }, 1000); // Poll every 1 second
+  };
+
 
   const generateTableHTML = () => {
     const htmlRows = comparisonResults.value.map(result => {

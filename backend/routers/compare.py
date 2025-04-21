@@ -25,16 +25,16 @@ router = APIRouter(
 
 
 @router.post("/start-task/")
-async def start_task(background_tasks: BackgroundTasks,
-                     temp_store: Annotated[TempStorage, Depends(get_storage)],
-                     header_left: int = Form(40), footer_left: int = Form(40),
-                     size_weight_left: float = Form(0.8), header_right: int = Form(40),
-                     footer_right: int = Form(40), size_weight_right: float = Form(0.8),
-                     ratio_threshold: float = Form(0.5), length_threshold: int = Form(30),
-                     text_column_left: str = Form(''), text_column_right: str = Form(''),
-                     id_column_left: str = Form(''), id_column_right: str = Form(''),
-                     left_file: UploadFile = File(...),
-                     right_file: UploadFile = File(...)) -> TaskIdResponse:
+def start_task(background_tasks: BackgroundTasks,
+               temp_store: Annotated[TempStorage, Depends(get_storage)],
+               header_left: int = Form(40), footer_left: int = Form(40),
+               size_weight_left: float = Form(0.8), header_right: int = Form(40),
+               footer_right: int = Form(40), size_weight_right: float = Form(0.8),
+               ratio_threshold: float = Form(0.5), length_threshold: int = Form(30),
+               text_column_left: str = Form(''), text_column_right: str = Form(''),
+               id_column_left: str = Form(''), id_column_right: str = Form(''),
+               left_file: UploadFile = File(...),
+               right_file: UploadFile = File(...)) -> TaskIdResponse:
     """
     Upload files and make a comparison report
     """
@@ -71,11 +71,11 @@ def get_task_progress(task_id: str,
     """
     Get task progress status
     """
-    progress = temp_store.get_progress(task_id)
-    if progress is None:
+    progress, status = temp_store.get_progress(task_id)
+    if progress is None or status is None:
         raise HTTPException(
             status_code=400, detail="Task was not found")
-    return ProgressResponse(progress=progress)
+    return ProgressResponse(progress=progress, status=status)
 
 
 @router.get("/result/{task_id}")
@@ -88,15 +88,15 @@ def get_task_result(task_id: str,
     if dataset is None:
         raise HTTPException(
             status_code=400, detail="Data is not available or not ready yet")
-    
-    return CompareResponse(comparison=dataset) # type: ignore
+
+    return CompareResponse(comparison=dataset)  # type: ignore
 
 
-async def run_comparison_task(task_id: str,
-                              left_path: str,
-                              right_path: str,
-                              args: CompareRequest,
-                              temp_store: TempStorage):
+def run_comparison_task(task_id: str,
+                        left_path: str,
+                        right_path: str,
+                        args: CompareRequest,
+                        temp_store: TempStorage):
     """
     Comparison task runner
     """
@@ -109,23 +109,23 @@ async def run_comparison_task(task_id: str,
                                        left_file_type,
                                        right_path,
                                        right_file_type,
-                                       args,
-                                       "json")
+                                       args, "json",
+                                       task_id, temp_store)
 
         temp_store.cache_progress(task_id, 90)
         comparison = (pd.DataFrame.from_records(comparison)
-                    .fillna("")
-                    .sort_values(["position", "position_secondary"])
-                    .drop(columns=["position", "position_secondary"])
-                    ).to_dict("records")
+                      .fillna("")
+                      .sort_values(["position", "position_secondary"])
+                      .drop(columns=["position", "position_secondary"])
+                      ).to_dict("records")
 
         temp_store.cache_result(task_id, comparison)
-        temp_store.cache_progress(task_id, 100)
+        temp_store.cache_progress(task_id, 100, "completed")
     except (IOError, ValueError) as ex:
         logger.warning("Handled error: %s", ex)
-        temp_store.cache_progress(task_id, -1)
+        temp_store.cache_progress(task_id, -1, "failed")
     except Exception as ex:  # pylint: disable=broad-exception-caught
-        temp_store.cache_progress(task_id, -1)  # indicate failure
+        temp_store.cache_progress(task_id, -1, "failed")  # indicate failure
         logger.error("Unknown error occured in comparison task : %s %s",
                      type(ex), str(ex))
     finally:

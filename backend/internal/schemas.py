@@ -78,3 +78,4 @@ class ProgressResponse(BaseModel):
     Task id response
     """
     progress: int
+    status: str

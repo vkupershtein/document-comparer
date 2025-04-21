@@ -2,12 +2,10 @@
 Module for temporary storage
 """
 import os
-import io
-from typing import Hashable, List, Dict, Any
+from typing import Hashable, List, Dict, Any, Tuple  # pylint: disable=deprecated-class
 import json
 
 from redis import Redis
-import pandas as pd
 
 
 class TempStorage:
@@ -27,27 +25,33 @@ class TempStorage:
                                   decode_responses=False)
         return cls(provider)
 
-    def cache_progress(self, task_id: str, progress: int):
+    def cache_progress(self, task_id: str,
+                       progress: int,
+                       status: str = "processing"):
         """
         Cache progress of the operation
         """
         self.provider.set(f"progress:{task_id}", progress, ex=10800)
+        self.provider.set(f"status:{task_id}", status, ex=10800)
 
-    def get_progress(self, task_id: str) -> int|None:
+    def get_progress(self, task_id: str) -> Tuple[int | None, str | None]:
         """
         Get progress status
         """
         progress = self.provider.get(f"progress:{task_id}")
+        status = self.provider.get(f"status:{task_id}")
+        if progress is None or status is None:
+            return None, None
         try:
-            return int(progress) if progress else None
+            return int(progress), status
         except ValueError:
-            return None
+            return None, None
 
     def cache_result(self, task_id: str, dataset: List[Dict[Hashable, Any]]):
         """
         Cache result of the operation
         """
-        rval = json.dumps(dataset)       
+        rval = json.dumps(dataset)
         self.provider.set(f"result:{task_id}", rval, ex=10800)
 
     def get_result(self, task_id: str) -> List[Dict[Hashable, Any]] | None:
@@ -83,10 +87,13 @@ def get_storage() -> TempStorage:
     temp_store = TempStorage.create_with_redis(connection_string)
     return temp_store
 
-def notify(progress: int, temp_store: TempStorage|None=None, task_id:str|None = None):
+
+def notify(progress: int, status: str = "processing",
+           temp_store: TempStorage | None = None,
+           task_id: str | None = None):
     """
     Notify progress change
     """
     if temp_store is None or task_id is None:
         return
-    temp_store.cache_progress(task_id, progress)
+    temp_store.cache_progress(task_id, progress, status)
