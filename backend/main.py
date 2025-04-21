@@ -1,3 +1,7 @@
+"""
+Entry for FastAPI backend
+"""
+
 import logging
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,24 +27,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.post("/upload/")
-async def upload_files(header_left: int = Form(40), footer_left: int = Form(40), 
+async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                        size_weight_left: float = Form(0.8), header_right: int = Form(40),
                        footer_right: int = Form(40), size_weight_right: float = Form(0.8),
                        ratio_threshold: float = Form(0.5), length_threshold: int = Form(30),
                        text_column_left: str = Form(''), text_column_right: str = Form(''),
-                       id_column_left: str = Form(''), id_column_right: str = Form(''), 
-                       left_file: UploadFile = File(...), 
+                       id_column_left: str = Form(''), id_column_right: str = Form(''),
+                       left_file: UploadFile = File(...),
                        right_file: UploadFile = File(...)) -> CompareResponse:
-    
+    """
+    Upload files and make a comparison report
+    """
+
     left_file_type = detect_file_type(left_file)
     right_file_type = detect_file_type(right_file)
-    
+
     comparison = compare_documents(left_file.file,
-                                   left_file_type, 
+                                   left_file_type,
                                    right_file.file,
-                                   right_file_type, 
-                                   CompareRequest(header_left=header_left, 
+                                   right_file_type,
+                                   CompareRequest(header_left=header_left,
                                                   header_right=header_right,
                                                   footer_left=footer_left,
                                                   footer_right=footer_right,
@@ -51,15 +59,15 @@ async def upload_files(header_left: int = Form(40), footer_left: int = Form(40),
                                                   text_column_left=text_column_left,
                                                   text_column_right=text_column_right,
                                                   id_column_left=id_column_left,
-                                                  id_column_right=id_column_right), 
-                                    "json")
+                                                  id_column_right=id_column_right),
+                                   "json")
 
     comparison = (pd.DataFrame.from_records(comparison)
-                          .fillna("")
-                          .sort_values(["position", "position_secondary"])
-                          .drop(columns=["position", "position_secondary"])
-                          ).to_dict("records")        
-    return CompareResponse(comparison = comparison) # type: ignore
+                  .fillna("")
+                  .sort_values(["position", "position_secondary"])
+                  .drop(columns=["position", "position_secondary"])
+                  ).to_dict("records")
+    return CompareResponse(comparison=comparison)  # type: ignore
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
