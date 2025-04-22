@@ -21,9 +21,7 @@
     <Dialog v-model:visible="loading" modal header="Comparison in Progress" :style="{ width: '40rem' }">
       <span class="text-surface-500 dark:text-surface-400 block mb-8 capitalize"> {{ taskStatus }}</span>
       <ProgressBar :value="taskProgress" style="height: 20px;" class="mx-4 my-4"/>
-    </Dialog>
-
-    
+    </Dialog>    
 
     <DataTable v-if="comparisonResults.length > 0" 
       :value="comparisonResults"
@@ -244,9 +242,11 @@
 
         if (res.data.status === 'completed') {
           clearInterval(pollingInterval.value);
-                   
-          const result = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/result/${taskId.value}`);
+          taskProgress.value = 100
+          
+          const result = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/result/${taskId.value}`);          
           comparisonResults.value = result.data.comparison;
+                    
           loading.value = false;
         }
 

@@ -26,7 +26,7 @@ class TempStorage:
         return cls(provider)
 
     def cache_progress(self, task_id: str,
-                       progress: int,
+                       progress: int|float,
                        status: str = "processing"):
         """
         Cache progress of the operation
@@ -86,14 +86,3 @@ def get_storage() -> TempStorage:
                                                          "redis://127.0.0.1:6379"))
     temp_store = TempStorage.create_with_redis(connection_string)
     return temp_store
-
-
-def notify(progress: int, status: str = "processing",
-           temp_store: TempStorage | None = None,
-           task_id: str | None = None):
-    """
-    Notify progress change
-    """
-    if temp_store is None or task_id is None:
-        return
-    temp_store.cache_progress(task_id, progress, status)

@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Optional
 
 from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.paragraph import Paragraph
+from internal.notifier import Notifier
 
 
 @dataclass
@@ -13,6 +14,7 @@ class ParagraphMerger:
     """
     Class responsible for merging paragraphs based on matching patterns
     """
+    notifier: Notifier
     merged_paragraphs_left: List[Paragraph] = field(default_factory=list)
     merged_paragraphs_right: List[Paragraph] = field(default_factory=list)
 
@@ -52,6 +54,7 @@ class ParagraphMerger:
         right_texts_stack: List[Paragraph] = list(
             reversed(texts_right.copy()))
 
+        max_loop_length = max(len(left_texts_stack), len(right_texts_stack))
         # Step 3: Process paragraphs until all are consumed
         while left_texts_stack or right_texts_stack:
             # Get next paragraphs from stacks if available
@@ -66,6 +69,10 @@ class ParagraphMerger:
                 left_texts_stack, right_texts_stack,
                 left_lookup_map, right_lookup_map
             )
+
+            iteration = max_loop_length - max(len(left_texts_stack),
+                                              len(right_texts_stack))
+            self.notifier.loop_notify(iteration, 70, 97, max_loop_length)
 
         # Step 4: Handle any remaining paragraphs in temporary collections
         self._finalize_merge_results()

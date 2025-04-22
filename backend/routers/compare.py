@@ -15,6 +15,7 @@ from use_cases.processor_factory import detect_file_type_on_name
 from use_cases import compare_documents
 from internal.schemas import CompareRequest, TaskIdResponse, CompareResponse, ProgressResponse
 from internal.temp_storage import TempStorage, get_storage
+from internal.notifier import Notifier
 
 logger = logging.getLogger(__name__)
 
@@ -100,19 +101,17 @@ def run_comparison_task(task_id: str,
     """
     Comparison task runner
     """
-    temp_store.cache_progress(task_id, 5)
+    notifier = Notifier(temp_store=temp_store, task_id=task_id)
     left_file_type = detect_file_type_on_name(left_path)
     right_file_type = detect_file_type_on_name(right_path)
     try:
-        temp_store.cache_progress(task_id, 10)
+        notifier.notify(10)
         comparison = compare_documents(left_path,
                                        left_file_type,
                                        right_path,
                                        right_file_type,
-                                       args, "json",
-                                       task_id, temp_store)
-
-        temp_store.cache_progress(task_id, 90)
+                                       args, notifier=notifier,
+                                       mode="json")
         comparison = (pd.DataFrame.from_records(comparison)
                       .fillna("")
                       .sort_values(["position", "position_secondary"])
@@ -120,7 +119,7 @@ def run_comparison_task(task_id: str,
                       ).to_dict("records")
 
         temp_store.cache_result(task_id, comparison)
-        temp_store.cache_progress(task_id, 100, "completed")
+        notifier.notify(99, "completed")
     except (IOError, ValueError) as ex:
         logger.warning("Handled error: %s", ex)
         temp_store.cache_progress(task_id, -1, "failed")

@@ -9,8 +9,8 @@ from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
 from document_comparer.paragraph_merger import ParagraphMerger
-
-from .utils import get_heading_info, split_into_sentences
+from document_comparer.utils import get_heading_info, split_into_sentences
+from internal.notifier import Notifier
 
 
 class TextMatcher:
@@ -21,7 +21,8 @@ class TextMatcher:
     def __init__(self, texts_left: List[Paragraph],
                  texts_right: List[Paragraph],
                  ratio_threshold: float,
-                 length_threshold: int):
+                 length_threshold: int,
+                 notifier: Notifier):
         """
         Constructor of text matcher instance
         """
@@ -30,6 +31,7 @@ class TextMatcher:
         self.ratio_threshold = ratio_threshold * 100
         self.update_ratio_threshold = 90.0
         self.length_threshold = length_threshold
+        self.notifier = notifier
 
     def find_closest_match(self, match_positions: List[int], text_position: int, step: int) -> int:
         """
@@ -179,7 +181,7 @@ class TextMatcher:
 
         Delegates the actual merging to the ParagraphMerger class
         """
-        merger = ParagraphMerger()
+        merger = ParagraphMerger(notifier=self.notifier)
 
         updated_paragraphs_left, updated_paragraphs_right = merger.merge_paragraphs(self.texts_left,
                                                                                     self.texts_right,
@@ -218,13 +220,15 @@ class TextMatcher:
         for para in updated_paragraphs_right:
             para.payload["sent_pos"] = 0
 
-        for idx_left in texts_left_indices:
+        for i, idx_left in enumerate(texts_left_indices):
             para = self.texts_left[idx_left]
             updated_paragraphs_left += self.split_paragraph(para)
+            self.notifier.loop_notify(i, 40, 55, len(texts_left_indices))
 
-        for idx_right in texts_right_indices:
+        for i, idx_right in enumerate(texts_right_indices):
             para = self.texts_right[idx_right]
             updated_paragraphs_right += self.split_paragraph(para)
+            self.notifier.loop_notify(i, 55, 70, len(texts_right_indices))
 
         self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
         self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
