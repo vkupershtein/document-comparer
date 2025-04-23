@@ -2,9 +2,11 @@
 Module to process PDF files and extract paragraphs.
 """
 
+from functools import partial
 from io import BufferedReader, BytesIO
-from typing import List, Optional, Union
+from typing import Callable, List, Optional, Union
 
+from internal.notifier import Notifier, ThresholdNotifier
 import numpy as np
 import pdfplumber as pdfp
 
@@ -24,8 +26,9 @@ class PDFProcessor(DocumentProcessor):
                  top_start: int = 0,
                  top: int = 0,
                  bottom: int = 0,
-                 size_weight: float = 1.0
-                 ):
+                 size_weight: float = 1.0,
+                 threshold_notifier: ThresholdNotifier =
+                 ThresholdNotifier(notifier=Notifier(None, None), lower=0, upper=0)):
         """Initialize PDFProcessor with a file object or path."""
         self.content = file_object
         self.page_start = page_start
@@ -34,6 +37,12 @@ class PDFProcessor(DocumentProcessor):
         self.top = top
         self.bottom = bottom
         self.size_weight = size_weight
+        self.notifier = threshold_notifier["notifier"]
+        self.lower_threshold = threshold_notifier["lower"]
+        self.upper_threshold = threshold_notifier["upper"]
+        self.middle_threshold = (
+            self.upper_threshold + self.lower_threshold) // 2
+        self.threshold_notifier = threshold_notifier
 
     def extract_paragraphs(self) -> List[Paragraph]:
         """
@@ -55,6 +64,9 @@ class PDFProcessor(DocumentProcessor):
             # Process paragraphs with heading detection
             self._process_page_paragraphs(
                 page_paragraphs, paragraphs, page_idx, non_break_pages)
+
+            self.notifier.loop_notify(page_idx, self.middle_threshold,
+                                      self.upper_threshold, len(paged_document_words))
 
         return paragraphs
 
@@ -78,6 +90,9 @@ class PDFProcessor(DocumentProcessor):
                 # Extract words with font size information
                 words = cropped_page.extract_words(extra_attrs=["size"])
                 page_words.append(words)
+
+                self.notifier.loop_notify(page_idx, self.lower_threshold,
+                                          self.middle_threshold, len(pages))
 
             return page_words
 

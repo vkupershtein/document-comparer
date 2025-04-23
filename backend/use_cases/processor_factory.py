@@ -6,13 +6,15 @@ from io import BufferedReader, BytesIO
 from typing import BinaryIO, Union
 
 from fastapi import UploadFile
+from internal.notifier import ThresholdNotifier
 from internal.schemas import CompareRequestSingle
 from document_comparer.pdf_processor import PDFProcessor
 from document_comparer.excel_processor import ExcelProcessor
 
 
 def create_document_processor(file_object: Union[BufferedReader, BytesIO, str, BinaryIO],
-                              args: CompareRequestSingle, mode: str):
+                              args: CompareRequestSingle, mode: str,
+                              threshold_notifier: ThresholdNotifier):
     """
     Create document processor: PDF or Excel
     """
@@ -23,7 +25,8 @@ def create_document_processor(file_object: Union[BufferedReader, BytesIO, str, B
     elif mode == 'pdf':
         return PDFProcessor(file_object, top=args.header,  # type: ignore
                             bottom=args.footer,
-                            size_weight=args.size_weight)
+                            size_weight=args.size_weight,
+                            threshold_notifier=threshold_notifier)
     raise ValueError('Processing mode should be either "excel" or "pdf"')
 
 

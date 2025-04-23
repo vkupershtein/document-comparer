@@ -9,6 +9,7 @@ from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile, Depends, HTTPException
+from internal.constants import INIT_PROGRESS
 import pandas as pd
 
 from use_cases.processor_factory import detect_file_type_on_name
@@ -105,7 +106,7 @@ def run_comparison_task(task_id: str,
     left_file_type = detect_file_type_on_name(left_path)
     right_file_type = detect_file_type_on_name(right_path)
     try:
-        notifier.notify(10)
+        notifier.notify(INIT_PROGRESS)
         comparison = compare_documents(left_path,
                                        left_file_type,
                                        right_path,

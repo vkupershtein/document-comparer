@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Optional
 
 from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.paragraph import Paragraph
+from internal.constants import COMPLETE_MERGE, COMPLETE_SPLIT
 from internal.notifier import Notifier
 
 
@@ -72,7 +73,8 @@ class ParagraphMerger:
 
             iteration = max_loop_length - max(len(left_texts_stack),
                                               len(right_texts_stack))
-            self.notifier.loop_notify(iteration, 70, 97, max_loop_length)
+            self.notifier.loop_notify(iteration, COMPLETE_SPLIT, 
+                                      COMPLETE_MERGE, max_loop_length)
 
         # Step 4: Handle any remaining paragraphs in temporary collections
         self._finalize_merge_results()

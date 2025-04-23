@@ -10,7 +10,10 @@ from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
 from document_comparer.paragraph_merger import ParagraphMerger
 from document_comparer.utils import get_heading_info, split_into_sentences
+from internal.constants import COMPLETE_SECOND, COMPLETE_SPLIT
 from internal.notifier import Notifier
+
+COMPLETE_MIDDLE = (COMPLETE_SPLIT + COMPLETE_SECOND) // 2
 
 
 class TextMatcher:
@@ -22,7 +25,7 @@ class TextMatcher:
                  texts_right: List[Paragraph],
                  ratio_threshold: float,
                  length_threshold: int,
-                 notifier: Notifier):
+                 notifier: Notifier = Notifier(None, None)):
         """
         Constructor of text matcher instance
         """
@@ -223,12 +226,14 @@ class TextMatcher:
         for i, idx_left in enumerate(texts_left_indices):
             para = self.texts_left[idx_left]
             updated_paragraphs_left += self.split_paragraph(para)
-            self.notifier.loop_notify(i, 40, 55, len(texts_left_indices))
+            self.notifier.loop_notify(i, COMPLETE_SECOND, COMPLETE_MIDDLE,
+                                      len(texts_left_indices))
 
         for i, idx_right in enumerate(texts_right_indices):
             para = self.texts_right[idx_right]
             updated_paragraphs_right += self.split_paragraph(para)
-            self.notifier.loop_notify(i, 55, 70, len(texts_right_indices))
+            self.notifier.loop_notify(i, COMPLETE_MIDDLE, 
+                                      COMPLETE_SPLIT, len(texts_right_indices))
 
         self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
         self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)

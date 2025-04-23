@@ -65,7 +65,7 @@ def cli():
                                                   text_column_right=args.text_column_right,
                                                   id_column_left=args.id_column_left,
                                                   id_column_right=args.id_column_right),
-                                   "html")
+                                   mode="html")
 
     logger.info("Produce HTML report")
 

@@ -4,7 +4,7 @@ Module for Notifier
 
 from dataclasses import dataclass
 import math
-from typing import Optional
+from typing import Optional, TypedDict
 
 from internal.temp_storage import TempStorage
 
@@ -17,7 +17,7 @@ class Notifier:
     task_id: Optional[str]
     temp_store: Optional[TempStorage]
 
-    def notify(self, progress: int|float, status: str = "processing"):
+    def notify(self, progress: int | float, status: str = "processing"):
         """
         Notify progress change
         """
@@ -25,11 +25,19 @@ class Notifier:
             return
         self.temp_store.cache_progress(self.task_id, progress, status)
 
-    def loop_notify(self, iteration: int, lower: int, 
-                    upper: int, max_iter:int, 
+    def loop_notify(self, iteration: int, lower: int,
+                    upper: int, max_iter: int,
                     status: str = "processing"):
         """
         Notify progress in the loop
         """
         progress = lower + math.floor(iteration * (upper - lower) / max_iter)
         self.notify(progress, status)
+
+class ThresholdNotifier(TypedDict):
+    """
+    Notifier with lower and upper thresholds
+    """
+    notifier: Notifier
+    lower: int
+    upper: int
