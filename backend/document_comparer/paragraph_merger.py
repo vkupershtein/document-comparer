@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Optional
 
 from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.paragraph import Paragraph
+from document_comparer.paragraph_utils import join_paragraphs
 from internal.constants import COMPLETE_MERGE, COMPLETE_SPLIT
 from internal.notifier import Notifier
 
@@ -31,10 +32,10 @@ class ParagraphMerger:
     sign_left: bool = True
     sign_right: bool = True
 
-    def merge_paragraphs(self,
-                         texts_left: List[Paragraph],
-                         texts_right: List[Paragraph],
-                         ratio_threshold: float) -> Tuple[List[Paragraph], List[Paragraph]]:
+    def merge_paragraph_pipeline(self,
+                                 texts_left: List[Paragraph],
+                                 texts_right: List[Paragraph],
+                                 ratio_threshold: float) -> Tuple[List[Paragraph], List[Paragraph]]:
         """
         Merge neighboring paragraphs based on matching patterns
 
@@ -49,6 +50,23 @@ class ParagraphMerger:
         left_lookup_map, right_lookup_map = self._make_lookup_map_for_matches(
             matched_paragraphs)
 
+        self.merge_paragraphs(texts_left, texts_right,
+                              left_lookup_map, right_lookup_map)
+
+        self.merged_paragraphs_left = self.reverse_split_paragraphs(self.merged_paragraphs_left,
+                                                                    left_lookup_map)
+        self.merged_paragraphs_right = self.reverse_split_paragraphs(self.merged_paragraphs_right,
+                                                                     right_lookup_map)
+
+        return self.merged_paragraphs_left, self.merged_paragraphs_right
+
+    def merge_paragraphs(self, texts_left: List[Paragraph],
+                         texts_right: List[Paragraph],
+                         left_lookup: Dict[Tuple[int, int], Tuple[int, int]],
+                         right_lookup: Dict[Tuple[int, int], Tuple[int, int]]):
+        """
+        Merge paragraphs using text lists and lookups
+        """
         # Step 2: Initialize processing stacks and result collections
         left_texts_stack: List[Paragraph] = list(
             reversed(texts_left.copy()))
@@ -68,19 +86,50 @@ class ParagraphMerger:
             self._process_paragraph_pair(
                 left_para, right_para,
                 left_texts_stack, right_texts_stack,
-                left_lookup_map, right_lookup_map
+                left_lookup, right_lookup
             )
 
             iteration = max_loop_length - max(len(left_texts_stack),
                                               len(right_texts_stack))
-            self.notifier.loop_notify(iteration, COMPLETE_SPLIT, 
+            self.notifier.loop_notify(iteration, COMPLETE_SPLIT,
                                       COMPLETE_MERGE, max_loop_length)
 
         # Step 4: Handle any remaining paragraphs in temporary collections
         self._finalize_merge_results()
 
-        # Step 5: Return the merged collections
-        return self.merged_paragraphs_left, self.merged_paragraphs_right
+    @classmethod
+    def reverse_split_paragraphs(cls, paragraphs: List[Paragraph],
+                                 lookup: Dict[Tuple[int, int], Tuple[int, int]]) \
+            -> List[Paragraph]:
+        """
+        Merge unmatched sentences from the same paragraphs
+        """
+        unmatched_paragraphs_map: Dict[int, List[Paragraph]] = {}
+        unmatched_indices: List[int] = []
+        for i, para in enumerate(paragraphs):
+            matched_para = lookup.get(
+                (para.payload["para_pos"], para.payload["sent_pos"]))
+            if not matched_para:
+                unmatched_paragraphs_map.setdefault(
+                    para.payload["para_pos"], []).append(para)
+                unmatched_indices.append(i)
+
+        for i in reversed(unmatched_indices):
+            paragraphs.pop(i)
+
+        temp_paragraphs: List[Paragraph] = []
+        prev_sent_pos = -1
+        for unmatched_paragraphs in unmatched_paragraphs_map.values():
+            for para in unmatched_paragraphs:
+                if prev_sent_pos not in [-1, para.payload["sent_pos"] - 1] and temp_paragraphs:
+                    paragraphs.append(
+                        join_paragraphs(temp_paragraphs))
+                    temp_paragraphs = []
+                temp_paragraphs.append(para)
+                prev_sent_pos = para.payload["sent_pos"]
+        if temp_paragraphs:
+            paragraphs.append(join_paragraphs(temp_paragraphs))
+        return paragraphs
 
     def _compute_and_get_matched_paragraphs(self,
                                             texts_left,
@@ -317,16 +366,6 @@ class ParagraphMerger:
         if self.temp_paragraphs_right:
             self._flush_right()
 
-    @staticmethod
-    def _join_paragraphs(paragraphs: List[Paragraph]) -> Paragraph:
-        """
-        Join multiple paragraphs into one
-        """
-        assert len(paragraphs) > 0
-        return Paragraph(text=" ".join([para.text for para in paragraphs]),
-                         id=paragraphs[0].id,
-                         payload=paragraphs[0].payload)
-
     @classmethod
     def _cross_insert_stack(cls, left_stack: List[Paragraph],
                             right_stack: List[Paragraph],
@@ -380,7 +419,7 @@ class ParagraphMerger:
         Flush left side to the resulting paragraphs list
         """
         self.merged_paragraphs_left.append(
-            self._join_paragraphs(self.temp_paragraphs_left))
+            join_paragraphs(self.temp_paragraphs_left))
         self.temp_paragraphs_left = []
 
     def _flush_right(self):
@@ -388,5 +427,5 @@ class ParagraphMerger:
         Flush right side to the resulting paragraphs list
         """
         self.merged_paragraphs_right.append(
-            self._join_paragraphs(self.temp_paragraphs_right))
+            join_paragraphs(self.temp_paragraphs_right))
         self.temp_paragraphs_right = []

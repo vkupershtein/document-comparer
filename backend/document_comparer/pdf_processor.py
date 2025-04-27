@@ -2,9 +2,8 @@
 Module to process PDF files and extract paragraphs.
 """
 
-from functools import partial
 from io import BufferedReader, BytesIO
-from typing import Callable, List, Optional, Union
+from typing import List, Optional, Union
 
 from internal.notifier import Notifier, ThresholdNotifier
 import numpy as np
@@ -155,7 +154,8 @@ class PDFProcessor(DocumentProcessor):
                 para_pos = len(document_paragraphs)
                 document_paragraphs.append(Paragraph(text=para,
                                                      id=str(para_pos),
-                                                     payload={"para_pos": para_pos}))
+                                                     payload={"para_pos": para_pos,
+                                                              "page_number": str(page_idx+1)}))                
 
     def _has_heading(self, paragraph):
         """

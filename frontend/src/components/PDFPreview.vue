@@ -16,12 +16,12 @@
         <div>
           <label class="block font-medium mb-1">Header (px)</label>
           <InputNumber v-model="headerCrop" :min="0" :max="maxHeight" />
-          <Slider v-model="headerCrop" class="mt-3" />
+          <Slider v-model="headerCrop" :max="maxHeight" class="mt-3" />
         </div>
         <div>
           <label class="block font-medium mb-1">Footer (px)</label>
           <InputNumber v-model="footerCrop" :min="0" :max="maxHeight" />
-          <Slider v-model="footerCrop" class="mt-3" />
+          <Slider v-model="footerCrop" :max="maxHeight" class="mt-3" />
         </div>
       </div>
     </div>
@@ -44,7 +44,7 @@
   const headerCrop = defineModel('headerCrop');
   const footerCrop = defineModel('footerCrop');
   const canvas = ref(null);
-  const maxHeight = ref(1000);
+  const maxHeight = ref(250);
   const pageNumber = ref(1);
   const numPages = ref(1);
   let pdfDoc = null;
@@ -66,8 +66,7 @@
         const viewport = page.getViewport({ scale: previewScale });
         const context = canvas.value.getContext('2d');
         canvas.value.height = viewport.height;
-        canvas.value.width = viewport.width;
-        maxHeight.value = viewport.height;
+        canvas.value.width = viewport.width;        
 
         const renderContext = {
             canvasContext: context,

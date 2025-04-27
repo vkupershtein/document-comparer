@@ -81,7 +81,9 @@
         </template>
       </Column>
       <Column v-if='leftIdColumn' field="text_left_id" header="ID # Original" />
-      <Column v-if='rightIdColumn' field="text_right_id" header="ID # Updated" /> 
+      <Column v-if='rightIdColumn' field="text_right_id" header="ID # Updated" />
+      <Column field="page_number_left" header="Page Number # Original" />
+      <Column field="page_number_right" header="Page Number # Updated" /> 
       <Column field="heading_number_left" header="Heading # Original" />
       <Column field="heading_text_left" header="Heading Original" />                
       <Column field="heading_number_right" header="Heading # Updated" />

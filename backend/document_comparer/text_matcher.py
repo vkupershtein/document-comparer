@@ -9,6 +9,7 @@ from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph
 from document_comparer.paragraph_merger import ParagraphMerger
+from document_comparer.paragraph_utils import sorted_paragraphs
 from document_comparer.utils import get_heading_info, split_into_sentences
 from internal.constants import COMPLETE_SECOND, COMPLETE_SPLIT
 from internal.notifier import Notifier
@@ -176,7 +177,7 @@ class TextMatcher:
         """
         texts, _ = split_into_sentences(para.text)
         return [Paragraph(text=text, id=para.id, payload={**para.payload, "sent_pos": i})
-                for i, text in enumerate(texts)]
+                for i, text in enumerate(texts)]    
 
     def update_merge_paragraphs(self):
         """
@@ -184,22 +185,14 @@ class TextMatcher:
 
         Delegates the actual merging to the ParagraphMerger class
         """
-        merger = ParagraphMerger(notifier=self.notifier)
+        merger = ParagraphMerger(notifier=self.notifier)        
 
-        updated_paragraphs_left, updated_paragraphs_right = merger.merge_paragraphs(self.texts_left,
+        updated_paragraphs_left, updated_paragraphs_right = merger.merge_paragraph_pipeline(self.texts_left,
                                                                                     self.texts_right,
                                                                                     self.update_ratio_threshold)
 
-        self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
-        self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
-
-    @classmethod
-    def sorted_paragraphs(cls, paragraphs: List[Paragraph]) -> List[Paragraph]:
-        """
-        Sort paragraphs
-        """
-        return sorted(paragraphs,
-                      key=lambda para: (para.payload["para_pos"], para.payload.get("sent_pos", 0)))
+        self.texts_left = sorted_paragraphs(updated_paragraphs_left)
+        self.texts_right = sorted_paragraphs(updated_paragraphs_right)
 
     def update_split_paragraphs(self):
         """
@@ -235,8 +228,8 @@ class TextMatcher:
             self.notifier.loop_notify(i, COMPLETE_MIDDLE, 
                                       COMPLETE_SPLIT, len(texts_right_indices))
 
-        self.texts_left = self.sorted_paragraphs(updated_paragraphs_left)
-        self.texts_right = self.sorted_paragraphs(updated_paragraphs_right)
+        self.texts_left = sorted_paragraphs(updated_paragraphs_left)
+        self.texts_right = sorted_paragraphs(updated_paragraphs_right)
 
     def generate_comparison(self, mode: str = "html"):
         """
@@ -278,6 +271,8 @@ class TextMatcher:
                 "text_right": text_right.text,
                 "text_left_report": report_left,
                 "text_right_report": report_right,
+                "page_number_left": text_left.payload.get("page_number", ""),
+                "page_number_right": text_right.payload.get("page_number", ""),
                 "position": pos_left,
                 "position_secondary": pos_right,
                 "heading_number_left": heading_number_left,
@@ -302,6 +297,8 @@ class TextMatcher:
                 "text_right": "",
                 "text_left_report": report_left,
                 "text_right_report": "",
+                "page_number_left": text_left.payload.get("page_number", ""),
+                "page_number_right": "",
                 "position": idx,
                 "position_secondary": 0,
                 "heading_number_left": heading_number_left,
@@ -335,6 +332,8 @@ class TextMatcher:
                 "text_right": text_right.text,
                 "text_left_report": "",
                 "text_right_report": report_right,
+                "page_number_left": "",
+                "page_number_right": text_right.payload.get("page_number", ""),                
                 "position": pos_left,
                 "position_secondary": pos_right,
                 "heading_number_left": "",
