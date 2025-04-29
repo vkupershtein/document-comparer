@@ -32,7 +32,8 @@ def calculate_score_matrix(texts_left: List[Paragraph], texts_right: List[Paragr
 
 def compute_optimal_matches(texts_left: List[Paragraph],
                             texts_right: List[Paragraph],
-                            ratio_threshold: float) -> List[Tuple[int, Paragraph, int, Paragraph, float]]:
+                            ratio_threshold: float,
+                            consider_partial=False) -> List[Tuple[int, Paragraph, int, Paragraph, float]]:
     """
     Compute optimal matches using score matrix and Hungarian algorithm.
     Only return matches exceeding the ratio threshold.
@@ -41,4 +42,8 @@ def compute_optimal_matches(texts_left: List[Paragraph],
     row_idx, col_idx = find_optimal_matches(score_matrix)
     return [(i, texts_left[i], j, texts_right[j], score_matrix[i][j])
             for i, j in zip(row_idx, col_idx)
-            if score_matrix[i][j] > ratio_threshold]  # type: ignore
+            if score_matrix[i][j] > ratio_threshold or
+            (consider_partial
+             and score_matrix[i][j] > ratio_threshold / 2
+             and fuzz.partial_ratio(texts_left[i].text,                       # type: ignore
+                                    texts_right[j].text) > ratio_threshold)]

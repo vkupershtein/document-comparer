@@ -2,8 +2,9 @@
 Module to match collections of texts
 """
 
-from difflib import SequenceMatcher
 from typing import List, Tuple, Callable, Any
+
+from Levenshtein import opcodes as match_opcodes
 
 from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
@@ -55,12 +56,11 @@ class TextMatcher:
         return match_positions.index(current_position)
 
     @classmethod
-    def get_edit_operations(cls, text_left: str, text_right: str, junk: Any = None):
+    def get_edit_operations(cls, text_left: str, text_right: str):
         """
-        Get edit operations using SequenceMatcher
+        Get edit operations using Levenshtein
         """
-        matcher = SequenceMatcher(junk, text_left, text_right)
-        return matcher.get_opcodes()
+        return match_opcodes(text_left, text_right)
 
     @classmethod
     def is_changed(cls, tag: str, subtext_left: str, subtext_right: str) -> bool:
@@ -80,8 +80,7 @@ class TextMatcher:
         Private helper that runs over the edit operations and formats reports.
         The formatter callback is responsible for processing one opcode.
         """
-        opcodes = cls.get_edit_operations(
-            text_left, text_right, lambda x: x == " ")
+        opcodes = cls.get_edit_operations(text_left, text_right)
         report_left = []
         report_right = []
         changed = False
@@ -239,7 +238,7 @@ class TextMatcher:
         self.update_split_paragraphs()
         self.update_merge_paragraphs()
         optimal_matches = compute_optimal_matches(
-            self.texts_left, self.texts_right, self.ratio_threshold)
+            self.texts_left, self.texts_right, self.ratio_threshold, consider_partial=True)
 
         match_positions_left = [match[0] for match in optimal_matches]
         match_positions_right = [match[2] for match in optimal_matches]
