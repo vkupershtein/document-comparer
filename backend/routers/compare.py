@@ -115,8 +115,6 @@ def run_comparison_task(task_id: str,
                                        mode="json")
         comparison = (pd.DataFrame.from_records(comparison)
                       .fillna("")
-                      .sort_values(["position", "position_secondary"])
-                      .drop(columns=["position", "position_secondary"])
                       ).to_dict("records")
 
         temp_store.cache_result(task_id, comparison)

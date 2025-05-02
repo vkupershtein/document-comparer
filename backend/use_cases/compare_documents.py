@@ -55,6 +55,8 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
                              right_paragraphs,
                              args.ratio_threshold,
                              args.length_threshold,
+                             left_file_type,
+                             right_file_type,
                              notifier).generate_comparison(mode)
 
     logger.info("Update headings")
