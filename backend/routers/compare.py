@@ -2,21 +2,22 @@
 Routers for comparsion tasks
 """
 import logging
+import os
 import shutil
 import tempfile
-import os
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile, Depends, HTTPException
-from internal.constants import INIT_PROGRESS
 import pandas as pd
-
-from use_cases.processor_factory import detect_file_type_on_name
-from use_cases import compare_documents
-from internal.schemas import CompareRequest, TaskIdResponse, CompareResponse, ProgressResponse
-from internal.temp_storage import TempStorage, get_storage
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, UploadFile)
+from internal.constants import INIT_PROGRESS
 from internal.notifier import Notifier
+from internal.schemas import (CompareRequest, CompareResponse,
+                              ProgressResponse, TaskIdResponse)
+from internal.temp_storage import TempStorage, get_storage
+from use_cases import compare_documents
+from use_cases.processor_factory import detect_file_type_on_name
 
 logger = logging.getLogger(__name__)
 
