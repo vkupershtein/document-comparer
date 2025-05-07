@@ -122,3 +122,16 @@ def test_split_text_complex():
         text)  # pylint: disable=unbalanced-tuple-unpacking
     assert sentences == expected
     assert positions == [0, 188, 213, 392, 460]
+
+
+def test_split_text_into_sentences_short():
+    """
+    Case for splitting with short sentences
+    """
+    #pylint: disable=line-too-long
+    text = "DIN.LYNE.new. great people"
+
+    expected = ["DIN.LYNE.new. great people"]
+
+    sentences, _ = split_into_sentences(text)
+    assert sentences == expected

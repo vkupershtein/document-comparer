@@ -9,6 +9,7 @@ import numpy as np
 
 from document_comparer.constants import HEADING_PATTERN
 
+
 def get_heading_info(text: str) -> Tuple[str, str]:
     """
     Extract heading info from text
@@ -27,7 +28,10 @@ def recognize_first_sentence(text):
     pos = 0
     while pos != -1:
         pos = text.find(".", pos+1)
-        if pos-2 > 0 and text[pos-2] != " " and text[pos-2] != ".":
+        if (pos-2 > 0 and
+                text[pos-2] != " " and
+                text[pos-2] != "." and
+                len(text[:pos].split()) > 1):
             return text[:pos]
     return text
 
@@ -115,7 +119,7 @@ def shift_elements(arr, num, fill_value):
     """
     Shift elements with predefined step and fill value
     """
-    result = np.empty_like(arr) # type: ignore
+    result = np.empty_like(arr)  # type: ignore
     if num > 0:
         result[:num] = fill_value
         result[num:] = arr[:-num]
