@@ -3,7 +3,7 @@ Module with utility functions
 """
 
 from typing import List, Set, Tuple
-from bisect import bisect_left, bisect_right
+from bisect import bisect_left, bisect_right, insort
 
 import numpy as np
 
@@ -157,3 +157,52 @@ def merge_sentences(sentences: List[str],
     if temp:
         result.append(temp)
     return result
+
+def filter_self_contained(levels):
+    """
+    Join arrays that are self contained
+    """
+    borders = []
+    ranges = []
+
+    for idx, level in enumerate(levels):
+        min_val = min(level)
+        max_val = max(level)
+
+        # Binary search start and end positions in border list
+        start_pos = bisect_right(borders, min_val)
+        end_pos = bisect_right(borders, max_val)
+
+        # CASE: Completely outside existing ranges
+        if start_pos == end_pos and start_pos % 2 == 0:
+            # Insert new border
+            insort(borders, min_val)
+            insort(borders, max_val)
+            ranges.append((min_val, max_val, level, idx))
+        
+        # CASE: Fully contains one or more existing ranges
+        elif start_pos % 2 == 0 and end_pos % 2 == 0:
+            # Determine contained ranges
+            to_remove = []
+            for i, (low, high, _, _) in enumerate(ranges):
+                if min_val <= low and max_val >= high:
+                    to_remove.append(i)
+
+            if to_remove:
+                # Remove borders for contained intervals
+                for i in sorted(to_remove, reverse=True):
+                    low, high, _, _ = ranges[i]
+                    borders.remove(low)
+                    borders.remove(high)
+                    del ranges[i]
+
+                # Add current interval
+                insort(borders, min_val)
+                insort(borders, max_val)
+                ranges.append((min_val, max_val, level, idx))
+
+        # CASE: Overlaps partially — skip
+        else:
+            continue
+
+    return [(_idx, lvl) for _, _, lvl, _idx in sorted(ranges, key=lambda x: x[0])]

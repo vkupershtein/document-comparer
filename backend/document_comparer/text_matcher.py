@@ -356,10 +356,6 @@ class TextMatcher:
             paragraph_right = (match_item.paragraph_right
                                if match_item.paragraph_right
                                else Paragraph("", ""))
-            heading_number_left, heading_text_left = get_heading_info(
-                paragraph_left.text)
-            heading_number_right, heading_text_right = get_heading_info(
-                paragraph_right.text)
             report_left, report_right = report_method(
                 paragraph_left.text, paragraph_right.text)
             item = {
@@ -371,12 +367,8 @@ class TextMatcher:
                 "text_right": paragraph_right.text,
                 "text_left_report": report_left,
                 "text_right_report": report_right,
-                "page_number_left": paragraph_left.payload.get("page_number", ""),
-                "page_number_right": paragraph_right.payload.get("page_number", ""),
-                "heading_number_left": heading_number_left,
-                "heading_text_left": heading_text_left,
-                "heading_number_right": heading_number_right,
-                "heading_text_right": heading_text_right
+                "page_number_left": str(paragraph_left.payload.get("page_number", "")),
+                "page_number_right": str(paragraph_right.payload.get("page_number", ""))
             }
             comparison_obj.append(item)
 

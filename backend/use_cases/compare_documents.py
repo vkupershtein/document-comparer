@@ -58,17 +58,6 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
                              left_file_type,
                              right_file_type,
                              notifier).generate_comparison(mode)
-
-    logger.info("Update headings")
-    left_heading_sequence = create_graph_builder(
-        comparison, "heading_number_left").find_best_path_in_sequence()
-    set_best_path(comparison, left_heading_sequence,
-                  "heading_number_left", "heading_text_left")
-
-    right_heading_sequence = create_graph_builder(
-        comparison, "heading_number_right").find_best_path_in_sequence()
-    set_best_path(comparison, right_heading_sequence,
-                  "heading_number_right", "heading_text_right")
     notifier.notify(99)
 
     return comparison
