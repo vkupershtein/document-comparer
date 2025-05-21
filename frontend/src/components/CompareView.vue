@@ -83,11 +83,7 @@
       <Column v-if='leftIdColumn' field="text_left_id" header="ID # Original" />
       <Column v-if='rightIdColumn' field="text_right_id" header="ID # Updated" />
       <Column field="page_number_left" header="Page Number # Original" />
-      <Column field="page_number_right" header="Page Number # Updated" /> 
-      <Column field="heading_number_left" header="Heading # Original" />
-      <Column field="heading_text_left" header="Heading Original" />                
-      <Column field="heading_number_right" header="Heading # Updated" />
-      <Column field="heading_text_right" header="Heading Updated" />        
+      <Column field="page_number_right" header="Page Number # Updated" />        
     </DataTable>
   </div>
   <Dialog v-model:visible="leftPreviewVisible" modal>
@@ -284,11 +280,7 @@
           <td>${formatChunks(result.text_left_report)}</td>
           <td>${formatChunks(result.text_right_report)}</td>
           <td>${result.text_left_id}</td>
-          <td>${result.text_right_id}</td>
-          <td>${result.heading_number_left}</td>
-          <td>${result.heading_text_left}</td>          
-          <td>${result.heading_number_right}</td>          
-          <td>${result.heading_text_right}</td>         
+          <td>${result.text_right_id}</td>        
         </tr>
       `;
     }).join('');
@@ -327,11 +319,7 @@
               <th>Text Left</th>
               <th>Text Right</th>
               <th>ID # Left</th>
-              <th>ID # Right</th>              
-              <th>Heading # Left</th>
-              <th>Heading Left</th>
-              <th>Heading # Right</th>                      
-              <th>Heading Right</th>                                
+              <th>ID # Right</th>                             
             </tr>
           </thead>
           <tbody>
@@ -350,11 +338,7 @@
       'Text Left': typeof result.text_left_report === "string" ? result.text_left_report : result.text_left_report.map(x => x.subtext).join(' '),
       'Text Right': typeof result.text_right_report === "string" ? result.text_right_report : result.text_right_report.map(x => x.subtext).join(' '),
       'ID # Left': result.text_left_id,
-      'ID # Right': result.text_right_id,
-      'Heading # Left': result.heading_number_left,
-      'Heading Left': result.heading_text_left,          
-      'Heading # Right': result.heading_number_right,
-      'Heading Right': result.heading_text_right
+      'ID # Right': result.text_right_id
     }));
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();

@@ -6,7 +6,6 @@ import logging
 from io import BufferedReader, BytesIO
 from typing import BinaryIO, Union
 
-from document_comparer.graph_builder import create_graph_builder, set_best_path
 from document_comparer.text_matcher import TextMatcher
 from internal.constants import COMPLETE_FIRST, INIT_PROGRESS, COMPLETE_SECOND
 from internal.notifier import Notifier, ThresholdNotifier
@@ -22,14 +21,14 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
                       right_file: Union[BufferedReader, BytesIO, str, BinaryIO],
                       right_file_type: str,
                       args: CompareRequest,
-                      notifier: Notifier=Notifier(None, None),
+                      notifier: Notifier = Notifier(None, None),
                       mode: str = "html"):
     """
     Compare documents and get comparison report
     """
     logger.info("Split pdf into paragraphs")
-    threshold_notifier = ThresholdNotifier(notifier=notifier, 
-                                           lower=INIT_PROGRESS, 
+    threshold_notifier = ThresholdNotifier(notifier=notifier,
+                                           lower=INIT_PROGRESS,
                                            upper=COMPLETE_FIRST)
     left_paragraphs = create_document_processor(left_file,
                                                 CompareRequestSingle(header=args.header_left,
@@ -38,9 +37,9 @@ def compare_documents(left_file: Union[BufferedReader, BytesIO, str, BinaryIO],
                                                                      text_column=args.text_column_left,
                                                                      id_column=args.id_column_left),
                                                 left_file_type,
-                                                threshold_notifier).extract_paragraphs()    
-    threshold_notifier = ThresholdNotifier(notifier=notifier, 
-                                           lower=COMPLETE_FIRST, 
+                                                threshold_notifier).extract_paragraphs()
+    threshold_notifier = ThresholdNotifier(notifier=notifier,
+                                           lower=COMPLETE_FIRST,
                                            upper=COMPLETE_SECOND)
     right_paragraphs = create_document_processor(right_file,
                                                  CompareRequestSingle(header=args.header_right,

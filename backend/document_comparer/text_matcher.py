@@ -15,7 +15,7 @@ from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph, ParagraphMatch
 from document_comparer.paragraph_utils import sorted_paragraphs
-from document_comparer.utils import get_heading_info, split_into_sentences
+from document_comparer.utils import split_into_sentences
 from internal.constants import COMPLETE_MERGE, COMPLETE_SECOND, COMPLETE_SPLIT
 from internal.notifier import Notifier
 
@@ -215,14 +215,17 @@ class TextMatcher:
         """
         paragraph_matches: List[ParagraphMatch] = self.make_paragraph_matches(
             False)
-        self.notifier.notify(COMPLETE_SPLIT + (COMPLETE_MERGE - COMPLETE_SPLIT) / 4)        
+        self.notifier.notify(
+            COMPLETE_SPLIT + (COMPLETE_MERGE - COMPLETE_SPLIT) / 4)
         paragraph_matches = join_optimize_paragraph_matches(paragraph_matches,
                                                             self.file_type_left == "pdf",
                                                             self.file_type_right == "pdf")
-        self.notifier.notify(COMPLETE_SPLIT + (COMPLETE_MERGE - COMPLETE_SPLIT) / 2)
+        self.notifier.notify(
+            COMPLETE_SPLIT + (COMPLETE_MERGE - COMPLETE_SPLIT) / 2)
         paragraph_matches = merge_matches_on_condition(
             paragraph_matches, matched_condition)
-        self.notifier.notify(COMPLETE_SPLIT + 3 * (COMPLETE_MERGE - COMPLETE_SPLIT) / 4)
+        self.notifier.notify(COMPLETE_SPLIT + 3 *
+                             (COMPLETE_MERGE - COMPLETE_SPLIT) / 4)
         if self.file_type_left == 'pdf' and self.file_type_right == "pdf":
             paragraph_matches = merge_matches_on_condition(paragraph_matches,
                                                            unmatched_condition_no_id)

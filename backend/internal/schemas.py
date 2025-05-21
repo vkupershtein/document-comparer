@@ -57,11 +57,6 @@ class CompareResult(BaseModel):
     text_right_report: str | List[TaggedSubtext]
     page_number_left: str
     page_number_right: str
-    heading_number_left: str
-    heading_text_left: str
-    heading_number_right: str
-    heading_text_right: str
-
 
 class CompareResponse(BaseModel):
     """

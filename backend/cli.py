@@ -70,7 +70,7 @@ def cli():
     logger.info("Produce HTML report")
 
     comparison_html_df = (pd.DataFrame.from_records(comparison)
-                          .fillna("")                          
+                          .fillna("")
                           .drop(columns=["text_left", "text_right"])
                           .astype(str))
 

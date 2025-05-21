@@ -158,6 +158,7 @@ def merge_sentences(sentences: List[str],
         result.append(temp)
     return result
 
+
 def filter_self_contained(levels):
     """
     Join arrays that are self contained
@@ -179,7 +180,7 @@ def filter_self_contained(levels):
             insort(borders, min_val)
             insort(borders, max_val)
             ranges.append((min_val, max_val, level, idx))
-        
+
         # CASE: Fully contains one or more existing ranges
         elif start_pos % 2 == 0 and end_pos % 2 == 0:
             # Determine contained ranges

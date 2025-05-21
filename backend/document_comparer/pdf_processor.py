@@ -85,9 +85,6 @@ class PDFProcessor(DocumentProcessor):
             self._process_page_paragraphs(
                 page_paragraphs, page_paragraphs_coords, paragraphs, page_idx, non_break_pages)
 
-            self.notifier.loop_notify(page_idx, self.middle_threshold,
-                                      self.upper_threshold, len(paged_document_words))
-
         return paragraphs
 
     def extract_table_info(self) -> Tuple[List[Paragraph], Dict[int, List[Tuple[int, int]]]]:
@@ -170,6 +167,8 @@ class PDFProcessor(DocumentProcessor):
                         tables_lines.append(
                             table_lines["explicit_horizontal_lines"])
                         pages_indices.append(page_idx)
+                self.notifier.loop_notify(page_idx, self.lower_threshold,
+                                          self.middle_threshold, len(pages))
             return tables, tables_lines, pages_indices
 
     def extract_document_words(self):
@@ -193,8 +192,8 @@ class PDFProcessor(DocumentProcessor):
                 words = cropped_page.extract_words(extra_attrs=["size"])
                 page_words.append(words)
 
-                self.notifier.loop_notify(page_idx, self.lower_threshold,
-                                          self.middle_threshold, len(pages))
+                self.notifier.loop_notify(page_idx, self.middle_threshold,
+                                          self.upper_threshold, len(pages))
 
             return page_words
 
@@ -249,7 +248,8 @@ class PDFProcessor(DocumentProcessor):
         paragraphs_coords: List[float] = []
 
         for word in words:
-            if table_borders and any(border[0]-1 < word["bottom"] < border[1]+1 for border in table_borders):
+            if table_borders and any(border[0] < word["bottom"] and word["top"] < border[1]
+                                     for border in table_borders):
                 continue
             # Calculate spacing from previous line
             spacing = word["top"] - prev_bottom
