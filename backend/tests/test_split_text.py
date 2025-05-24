@@ -70,9 +70,8 @@ def test_split_text_into_sentences_normal():
     expected = ["The document owner is responsible for maintaining document content, revisions, and updates.",
                 "An Owner is considered a “Checker” in Teamcenter workflow release when they are not the document Author."]
 
-    sentences, positions = split_into_sentences(text)
+    sentences = split_into_sentences(text)
     assert sentences == expected
-    assert positions == [0, 92]
 
 
 def test_split_text_into_sentences_one():
@@ -84,9 +83,8 @@ def test_split_text_into_sentences_one():
     expected = [
         "The document owner is responsible for maintaining document content, revisions, and updates"]
 
-    sentences, positions = split_into_sentences(text)
+    sentences = split_into_sentences(text)
     assert sentences == expected
-    assert positions == [0]
 
 
 def test_split_text_into_sentences_one_with_point():
@@ -98,9 +96,8 @@ def test_split_text_into_sentences_one_with_point():
     expected = [
         "The document owner is responsible for maintaining document content, revisions, and updates."]
 
-    sentences, positions = split_into_sentences(text)
+    sentences = split_into_sentences(text)
     assert sentences == expected
-    assert positions == [0]
 
 
 def test_split_text_complex():
@@ -118,10 +115,8 @@ def test_split_text_complex():
                 "2. Logic (permit) layer.", "This layer decides to either allow/maintain or inhibit the beam based on comparison of the input signals with parameters in the Beam Setup Database chosen by the Mode Controller.",
                 "3. Output layer, containing drivers to the Beam Inhibiting Devices.", "The layers are FPGA-based and fully programmable."]
 
-    sentences, positions = split_into_sentences(
-        text)  # pylint: disable=unbalanced-tuple-unpacking
+    sentences = split_into_sentences(text)
     assert sentences == expected
-    assert positions == [0, 188, 213, 392, 460]
 
 
 def test_split_text_into_sentences_short():
@@ -133,5 +128,5 @@ def test_split_text_into_sentences_short():
 
     expected = ["DIN.LYNE.new. great people"]
 
-    sentences, _ = split_into_sentences(text)
+    sentences = split_into_sentences(text)
     assert sentences == expected

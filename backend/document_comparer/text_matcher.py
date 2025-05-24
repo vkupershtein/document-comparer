@@ -2,6 +2,7 @@
 Module to match collections of texts
 """
 
+import logging
 from typing import List, Tuple, Callable, Any
 
 from Levenshtein import opcodes as match_opcodes
@@ -15,9 +16,13 @@ from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph, ParagraphMatch
 from document_comparer.paragraph_utils import sorted_paragraphs
-from document_comparer.utils import split_into_sentences
+from document_comparer.utils import (
+    define_lang_model, split_texts_into_sentences_lib, split_texts_into_sentences)
 from internal.constants import COMPLETE_MERGE, COMPLETE_SECOND, COMPLETE_SPLIT
 from internal.notifier import Notifier
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 COMPLETE_MIDDLE = (COMPLETE_SPLIT + COMPLETE_SECOND) // 2
 
@@ -45,6 +50,10 @@ class TextMatcher:
         self.file_type_left = file_type_left
         self.file_type_right = file_type_right
         self.notifier = notifier
+        self.nlp_model = define_lang_model(
+            [para.text for para in texts_left + texts_right])
+        logger.info('Using NLP model: %s', 
+                    self.nlp_model.lang if self.nlp_model else 'no model')        
 
     def find_closest_match(self, match_positions: List[int], text_position: int, step: int) -> int:
         """
@@ -198,14 +207,20 @@ class TextMatcher:
             texts_right_indices.remove(pos_right)
         return texts_left_indices, texts_right_indices
 
-    @classmethod
-    def split_paragraph(cls, para: Paragraph) -> List[Paragraph]:
+    def split_paragraphs(self, paragraphs: List[Paragraph]) -> List[Paragraph]:
         """
         Split paragraph into sentence paragraphs
         """
-        texts, _ = split_into_sentences(para.text)
-        return [Paragraph(text=text, id=para.id, payload={**para.payload, "sent_pos": i})
-                for i, text in enumerate(texts)]
+        para_it = (para.text for para in paragraphs)
+        updated_paragraphs: List[Paragraph] = []
+        if self.nlp_model is not None:            
+            texts_it = split_texts_into_sentences_lib(para_it, self.nlp_model)
+        else:
+            texts_it = split_texts_into_sentences(para_it)
+        for para, texts in zip(paragraphs, texts_it):
+            updated_paragraphs += [Paragraph(text=text, id=para.id, payload={**para.payload, "sent_pos": i})
+                                   for i, text in enumerate(texts)]
+        return updated_paragraphs
 
     def update_merge_paragraphs(self):
         """
@@ -262,17 +277,13 @@ class TextMatcher:
         for para in updated_paragraphs_right:
             para.payload["sent_pos"] = 0
 
-        for i, idx_left in enumerate(texts_left_indices):
-            para = self.texts_left[idx_left]
-            updated_paragraphs_left += self.split_paragraph(para)
-            self.notifier.loop_notify(i, COMPLETE_SECOND, COMPLETE_MIDDLE,
-                                      len(texts_left_indices))
+        updated_paragraphs_left += self.split_paragraphs([self.texts_left[idx_left]
+                                                          for idx_left in texts_left_indices])
+        self.notifier.notify(COMPLETE_MIDDLE)
 
-        for i, idx_right in enumerate(texts_right_indices):
-            para = self.texts_right[idx_right]
-            updated_paragraphs_right += self.split_paragraph(para)
-            self.notifier.loop_notify(i, COMPLETE_MIDDLE,
-                                      COMPLETE_SPLIT, len(texts_right_indices))
+        updated_paragraphs_right += self.split_paragraphs([self.texts_right[idx_right]
+                                                           for idx_right in texts_right_indices])
+        self.notifier.notify(COMPLETE_SPLIT)
 
         self.texts_left = sorted_paragraphs(updated_paragraphs_left)
         self.texts_right = sorted_paragraphs(updated_paragraphs_right)
