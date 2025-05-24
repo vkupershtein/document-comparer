@@ -16,8 +16,7 @@ from document_comparer.optimal_assignment import compute_optimal_matches
 from document_comparer.constants import JUNK_PATTERN
 from document_comparer.paragraph import Paragraph, ParagraphMatch
 from document_comparer.paragraph_utils import sorted_paragraphs
-from document_comparer.utils import (
-    define_lang_model, split_texts_into_sentences_lib, split_texts_into_sentences)
+from document_comparer.utils import split_texts_into_sentences
 from internal.constants import COMPLETE_MERGE, COMPLETE_SECOND, COMPLETE_SPLIT
 from internal.notifier import Notifier
 
@@ -49,11 +48,7 @@ class TextMatcher:
         self.length_threshold = length_threshold
         self.file_type_left = file_type_left
         self.file_type_right = file_type_right
-        self.notifier = notifier
-        self.nlp_model = define_lang_model(
-            [para.text for para in texts_left + texts_right])
-        logger.info('Using NLP model: %s', 
-                    self.nlp_model.lang if self.nlp_model else 'no model')        
+        self.notifier = notifier        
 
     def find_closest_match(self, match_positions: List[int], text_position: int, step: int) -> int:
         """
@@ -213,10 +208,7 @@ class TextMatcher:
         """
         para_it = (para.text for para in paragraphs)
         updated_paragraphs: List[Paragraph] = []
-        if self.nlp_model is not None:            
-            texts_it = split_texts_into_sentences_lib(para_it, self.nlp_model)
-        else:
-            texts_it = split_texts_into_sentences(para_it)
+        texts_it = split_texts_into_sentences(para_it)
         for para, texts in zip(paragraphs, texts_it):
             updated_paragraphs += [Paragraph(text=text, id=para.id, payload={**para.payload, "sent_pos": i})
                                    for i, text in enumerate(texts)]

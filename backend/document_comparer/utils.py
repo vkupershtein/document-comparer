@@ -7,9 +7,6 @@ from typing import Dict, Iterator, List, Set, Tuple
 from bisect import bisect_left, bisect_right, insort
 
 import numpy as np
-from lingua import Language, LanguageDetectorBuilder  # pylint:disable=no-name-in-module
-import spacy
-from spacy.language import Language as SpacyLanguage
 
 from document_comparer.constants import HEADING_PATTERN
 
@@ -57,55 +54,6 @@ def align_end(end, text):
         end -= 1
     return end
 
-
-def detect_language(text: str) -> str | None:
-    """
-    Detect language of a text
-    """
-    languages = [Language.ENGLISH, Language.GERMAN, Language.FINNISH]
-    detector = LanguageDetectorBuilder.from_languages(*languages).build()
-    language = detector.detect_language_of(text)
-    if language == Language.ENGLISH:
-        return "en"
-    elif language == Language.GERMAN:
-        return "de"
-    return None
-
-
-def detect_full_document_language(texts: List[str], probes_count: int = 10) -> str | None:
-    """
-    Detect language of a full document
-    """
-    positions = np.unique(np.round(np.linspace(
-        0.0, 1.0, probes_count) * float(len(texts)-1))).tolist()
-    if not positions or not isinstance(positions, list):
-        return None
-    langs: Dict[str, int] = defaultdict(int)
-    for pos in positions:
-        if not isinstance(pos, float):
-            continue
-        lang = detect_language(texts[int(pos)])
-        if lang is None:
-            continue
-        langs[lang] += 1
-        if langs[lang] >= len(positions) * 0.6:
-            return lang
-    return None
-
-
-def define_lang_model(texts: List[str]) -> SpacyLanguage | None:
-    """
-    Define language model for full document
-    """
-    lang = detect_full_document_language(texts)
-    nlp = None
-    if lang == 'en':        
-        nlp = spacy.load("en_core_web_sm")
-    elif lang == 'de':
-        nlp = spacy.load("de_core_news_sm")
-    return nlp
-
-
 def split_into_sentences(text: str) -> List[str]:
     """
     Split text into sentences
@@ -122,14 +70,6 @@ def split_into_sentences(text: str) -> List[str]:
             sentence = sentence.strip() + "."
         sentences.append(sentence)
     return sentences
-
-
-def split_texts_into_sentences_lib(texts: Iterator[str], nlp_model: SpacyLanguage) -> Iterator[List[str]]:
-    """
-    Split texts into sentences with nlp model
-    """
-    for doc in nlp_model.pipe(texts):
-        yield [span.text for span in list(doc.sents)]
 
 
 def split_texts_into_sentences(texts: Iterator[str]) -> Iterator[List[str]]:
