@@ -62,7 +62,7 @@
           <Select
             v-model="filterModel.value"
             @change="filterCallback()"
-            :options="['same', 'changed', 'new', 'removed']"
+            :options="['equal', 'changed', 'new', 'removed']"
             placeholder="Change type"
             class="p-column-filter"
             style="width: 100%"

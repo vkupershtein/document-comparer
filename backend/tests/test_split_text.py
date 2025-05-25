@@ -30,7 +30,7 @@ def test_sentence_recognition_complex():
     """
     Test sentence recognition in complex case
     """
-    #pylint: disable=line-too-long
+    # pylint: disable=line-too-long
     text = "Rack in the High-bay building containing, e.g. the Main Processing Unit (MPU). MPS Concentrators spread out along the PIP-II."
     expected = "Rack in the High-bay building containing, e.g. the Main Processing Unit (MPU)"
 
@@ -63,7 +63,7 @@ def test_split_text_into_sentences_normal():
     """
     Standard case for splitting
     """
-    #pylint: disable=line-too-long
+    # pylint: disable=line-too-long
     text = "The document owner is responsible for maintaining document content, revisions, and updates." \
         + " An Owner is considered a “Checker” in Teamcenter workflow release when they are not the document Author."
 
@@ -104,7 +104,7 @@ def test_split_text_complex():
     """
     Complex case for splitting into sentences
     """
-    #pylint: disable=line-too-long
+    # pylint: disable=line-too-long
     text = "5.1.3. System Diagram The MPS consists of three functional layers as shown in Figure 5-1: " \
         + "1. Input layer, which provides signal interface to the individual machine elements or subsystems. " \
         + "2. Logic (permit) layer. This layer decides to either allow/maintain or inhibit the beam based on comparison of the input signals with parameters in the Beam Setup Database chosen by the Mode Controller." + \
@@ -123,10 +123,22 @@ def test_split_text_into_sentences_short():
     """
     Case for splitting with short sentences
     """
-    #pylint: disable=line-too-long
+    # pylint: disable=line-too-long
     text = "DIN.LYNE.new. great people"
 
     expected = ["DIN.LYNE.new. great people"]
+
+    sentences = split_into_sentences(text)
+    assert sentences == expected
+
+
+def test_split_float_number():
+    """
+    Case for splitting with floating point number
+    """
+    text = "My weight is 25.7 kg, because I'am baby"
+
+    expected = ["My weight is 25.7 kg, because I'am baby"]
 
     sentences = split_into_sentences(text)
     assert sentences == expected

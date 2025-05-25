@@ -29,6 +29,11 @@ def recognize_first_sentence(text):
     pos = 0
     while pos != -1:
         pos = text.find(".", pos+1)
+        pos_space_before = text.rfind(" ", 0, pos)
+        pos_space_after = text.find(" ", pos+1)
+        if (text[pos_space_before+1:pos].isnumeric() 
+                or text[pos+1:pos_space_after].isnumeric()):
+            continue
         if (pos-2 > 0 and
                 text[pos-2] != " " and
                 text[pos-2] != "." and
